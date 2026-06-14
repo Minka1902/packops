@@ -85,6 +85,17 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/businessDirectory/$(bid)) &&
         ('boarding' in directoryEntry(bid)) && directoryEntry(bid).boarding.requestsOpen == true;
     }
+    // Customer grooming bookings are only accepted once the owner turns grooming
+    // online-booking on (projected into the public directory entry).
+    function acceptsGrooming(bid) {
+      return exists(/databases/$(database)/documents/businessDirectory/$(bid)) &&
+        ('grooming' in directoryEntry(bid)) && directoryEntry(bid).grooming.bookingOpen == true;
+    }
+    // Clients may only submit waivers once the owner has published the forms.
+    function waiversPublished(bid) {
+      return exists(/databases/$(database)/documents/businessDirectory/$(bid)) &&
+        ('waivers' in directoryEntry(bid)) && directoryEntry(bid).waivers.published == true;
+    }
 
     // Public, read-by-anyone business directory ("businesses near me"). Owners /
     // managers publish the denormalized projection; private business data stays
@@ -133,6 +144,12 @@ service cloud.firestore {
       match /litterCatalog/{id} {
         allow read:  if true;
         allow write: if hasCap(bid, 'manage_breeding') || hasCap(bid, 'manage_business');
+      }
+
+      // Public waiver/form templates (active + published) clients complete.
+      match /waivers/{id} {
+        allow read:  if true;
+        allow write: if hasCap(bid, 'manage_waivers') || hasCap(bid, 'manage_business');
       }
 
       // Reviews: one per user (doc id == reviewer uid), author-only writes.
@@ -189,12 +206,14 @@ service cloud.firestore {
         allow read: if hasCap(bid, 'view_appointments') || hasCap(bid, 'manage_appointments') ||
           (request.auth != null && resource.data.customerUserId == request.auth.uid);
         // Staff create, or a customer self-booking a constrained "scheduled" request.
+        // Grooming bookings additionally require the grooming module to be live.
         allow create: if hasCap(bid, 'manage_appointments') ||
           (request.auth != null
             && isBookable(bid)
             && request.resource.data.source == 'customer'
             && request.resource.data.customerUserId == request.auth.uid
-            && request.resource.data.status == 'scheduled');
+            && request.resource.data.status == 'scheduled'
+            && (!('kind' in request.resource.data) || request.resource.data.kind != 'grooming' || acceptsGrooming(bid)));
         allow delete: if hasCap(bid, 'manage_appointments');
         // Staff update; an assigned worker with manage_own_appointments; or the
         // customer changing only the status of their own booking (e.g. cancel).
@@ -411,6 +430,29 @@ service cloud.firestore {
             && request.resource.data.customerUserId == request.auth.uid
             && request.resource.data.status == 'waiting');
         allow update, delete: if hasCap(bid, 'manage_breeding');
+      }
+
+      match /groomServices/{id} {
+        // The grooming menu is harmless internally — any member may read it.
+        allow read:  if isBizMember(bid) || hasCap(bid, 'view_grooming');
+        allow write: if hasCap(bid, 'manage_grooming');
+      }
+
+      match /waiverTemplates/{id} {
+        allow read:  if isBizMember(bid) || hasCap(bid, 'view_waivers');
+        allow write: if hasCap(bid, 'manage_waivers');
+      }
+
+      match /waiverSubmissions/{id} {
+        allow read: if hasCap(bid, 'view_waivers') || hasCap(bid, 'manage_waivers') ||
+          (request.auth != null && resource.data.customerUserId == request.auth.uid);
+        // Staff record completions; a client submits their own once forms are published.
+        allow create: if hasCap(bid, 'manage_waivers') ||
+          (request.auth != null
+            && waiversPublished(bid)
+            && request.resource.data.customerUserId == request.auth.uid
+            && request.resource.data.status == 'submitted');
+        allow update, delete: if hasCap(bid, 'manage_waivers');
       }
     }
 

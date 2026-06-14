@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, BedDouble, CalendarPlus, CheckCircle2, Dog, Globe, GraduationCap, HeartHandshake, Mail, MapPin, Phone, ShoppingCart, Star } from 'lucide-react';
+import { ArrowLeft, BedDouble, CalendarPlus, CheckCircle2, Dog, FileSignature, Globe, GraduationCap, HeartHandshake, Mail, MapPin, Phone, Scissors, ShoppingCart, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useDirectoryEntry, useBooking, usePurchasePackage, useReviews } from '@/hooks/useDirectory';
+import { useDirectoryEntry, useBooking, usePurchasePackage, useReviews, useRequiredWaiverGate } from '@/hooks/useDirectory';
 import { generateSlots, dayStartOffset } from '@/lib/availability';
 import { BUSINESS_TYPES, DEFAULT_SLOT_MINUTES } from '@/types';
 
@@ -31,6 +31,7 @@ export default function BusinessBookingPage() {
   const { bid } = useParams<{ bid: string }>();
   const { entry, loading } = useDirectoryEntry(bid);
   const { book } = useBooking();
+  const { blocked: waiverBlocked, missing: missingWaivers } = useRequiredWaiverGate(bid, entry?.waivers?.required);
   const { purchasePackage } = usePurchasePackage();
   const [boughtPackageId, setBoughtPackageId] = useState<string | null>(null);
   const { reviews, myReview, submitReview } = useReviews(bid);
@@ -128,9 +129,14 @@ export default function BusinessBookingPage() {
 
       {entry.description && <p className="text-sm text-muted-foreground">{entry.description}</p>}
 
-      {(entry.orderable || entry.boarding?.requestsOpen ||
+      {(entry.orderable || entry.boarding?.requestsOpen || entry.grooming?.bookingOpen || entry.waivers?.published ||
         entry.type === 'trainer' || entry.type === 'shelter' || entry.type === 'breeder') && (
         <div className="flex flex-wrap gap-2">
+          {entry.grooming?.bookingOpen && (
+            <Button render={<Link to={`/discover/${bid}/grooming`} />} variant="outline" size="sm" className="gap-1.5">
+              <Scissors className="h-4 w-4" /> Book a groom
+            </Button>
+          )}
           {entry.orderable && (
             <Button render={<Link to={`/discover/${bid}/order`} />} variant="outline" size="sm" className="gap-1.5">
               <ShoppingCart className="h-4 w-4" /> Order products
@@ -139,6 +145,11 @@ export default function BusinessBookingPage() {
           {entry.boarding?.requestsOpen && (
             <Button render={<Link to={`/discover/${bid}/boarding`} />} variant="outline" size="sm" className="gap-1.5">
               <BedDouble className="h-4 w-4" /> Request a stay
+            </Button>
+          )}
+          {entry.waivers?.published && (
+            <Button render={<Link to={`/discover/${bid}/waivers`} />} variant="outline" size="sm" className="gap-1.5">
+              <FileSignature className="h-4 w-4" /> Forms
             </Button>
           )}
           {entry.type === 'trainer' && (
@@ -217,6 +228,19 @@ export default function BusinessBookingPage() {
         <Card>
           <CardContent className="py-6 text-center text-sm text-muted-foreground">
             This business doesn't accept online bookings. Reach out using the contact details above.
+          </CardContent>
+        </Card>
+      ) : waiverBlocked ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+            <FileSignature className="h-9 w-9 text-muted-foreground" />
+            <div>
+              <p className="font-semibold">Complete required forms first</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {entry.name} requires {missingWaivers.length} form{missingWaivers.length !== 1 ? 's' : ''} before you can book.
+              </p>
+            </div>
+            <Button render={<Link to={`/discover/${bid}/waivers`} />} size="sm">Complete forms</Button>
           </CardContent>
         </Card>
       ) : done ? (

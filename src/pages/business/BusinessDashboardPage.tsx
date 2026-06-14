@@ -18,7 +18,7 @@ import { isLowStock } from '@/components/business/StockBadge';
 import { occupancyByDate, todayStr } from '@/lib/occupancy';
 import { shiftsOnDate } from '@/lib/shifts';
 import { revenueByDay } from '@/lib/reports';
-import { isModuleEnabled, type BusinessModule, type Capability } from '@/types';
+import { clientFacingModuleStatuses, isModuleEnabled, type BusinessModule, type Capability } from '@/types';
 
 interface KpiProps {
   to: string;
@@ -78,6 +78,7 @@ export default function BusinessDashboardPage() {
   const currency = activeBusiness.currency;
   const money = (n: number) => `${currency} ${n.toFixed(2)}`;
   const today = todayStr();
+  const needsSetup = clientFacingModuleStatuses(activeBusiness).filter(s => s.needsSetup);
 
   const unpaid = invoices.filter(i => i.status !== 'paid' && i.status !== 'void');
   const unpaidSum = unpaid.reduce((s, i) => s + (i.total - i.amountPaid), 0);
@@ -180,6 +181,20 @@ export default function BusinessDashboardPage() {
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{activeBusiness.name}</h1>
         <p className="text-sm text-muted-foreground">Hub</p>
       </div>
+
+      {can('manage_business') && needsSetup.length > 0 && (
+        <Link
+          to="/business/settings"
+          className="flex items-start gap-3 rounded-xl border border-amber-500/50 bg-amber-50 p-4 text-sm transition-colors hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <span>
+            <span className="font-medium">Finish setup to go live.</span>{' '}
+            {needsSetup.map(s => s.label).join(', ')} {needsSetup.length === 1 ? 'is' : 'are'} enabled but not yet
+            available to customers. Configure in Settings.
+          </span>
+        </Link>
+      )}
 
       {kpis.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-background py-14 text-center">

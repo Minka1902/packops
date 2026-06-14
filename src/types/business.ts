@@ -81,7 +81,13 @@ export type Capability =
   | 'manage_classes'
   // breeder litters & waitlist
   | 'view_breeding'
-  | 'manage_breeding';
+  | 'manage_breeding'
+  // grooming
+  | 'view_grooming'
+  | 'manage_grooming'
+  // waivers & forms
+  | 'view_waivers'
+  | 'manage_waivers';
 
 export interface CapabilityMeta {
   capability: Capability;
@@ -131,6 +137,10 @@ export const CAPABILITY_CATALOG: CapabilityMeta[] = [
   { capability: 'manage_classes',         label: 'Manage classes',        group: 'Classes' },
   { capability: 'view_breeding',          label: 'View litters & waitlist', group: 'Breeding' },
   { capability: 'manage_breeding',        label: 'Manage litters & waitlist', group: 'Breeding' },
+  { capability: 'view_grooming',          label: 'View grooming',         group: 'Grooming' },
+  { capability: 'manage_grooming',        label: 'Manage grooming',       group: 'Grooming' },
+  { capability: 'view_waivers',           label: 'View waivers & forms',  group: 'Waivers' },
+  { capability: 'manage_waivers',         label: 'Manage waivers & forms', group: 'Waivers' },
 ];
 
 export const ALL_CAPABILITIES: Capability[] = CAPABILITY_CATALOG.map(c => c.capability);
@@ -149,29 +159,45 @@ export type BusinessModule =
   | 'customers' | 'appointments' | 'invoices' | 'inventory' | 'shipments'
   | 'orders' | 'boarding' | 'services' | 'shifts' | 'purchasing' | 'reports'
   | 'messages' | 'report_cards' | 'packages'
-  | 'adoptions' | 'patients' | 'classes' | 'breeding';
+  | 'adoptions' | 'patients' | 'classes' | 'breeding'
+  | 'grooming' | 'waivers';
 
 export type ModuleGroup = 'Operations' | 'Customer' | 'Specialty';
 
-export const MODULE_CATALOG: { module: BusinessModule; label: string; description: string; group: ModuleGroup }[] = [
+// A module entry. `clientFacing` marks modules that customers interact with from
+// the public directory; `requiresSetup` means the owner must finish configuring
+// and explicitly turn it on (mirrors commerce.ordersOpen) before clients may use
+// it — gated in the UI and in firestore.rules via the directory projection.
+export interface ModuleCatalogItem {
+  module: BusinessModule;
+  label: string;
+  description: string;
+  group: ModuleGroup;
+  clientFacing?: boolean;
+  requiresSetup?: boolean;
+}
+
+export const MODULE_CATALOG: ModuleCatalogItem[] = [
   { module: 'customers',    label: 'Customers',    description: 'Client records and their pets', group: 'Operations' },
-  { module: 'appointments', label: 'Appointments', description: 'Scheduling and online booking', group: 'Operations' },
+  { module: 'appointments', label: 'Appointments', description: 'Scheduling and online booking', group: 'Operations', clientFacing: true, requiresSetup: true },
   { module: 'invoices',     label: 'Invoices',     description: 'Billing and payments', group: 'Operations' },
   { module: 'inventory',    label: 'Inventory',    description: 'Products and stock levels', group: 'Operations' },
   { module: 'shipments',    label: 'Shipments',    description: 'Order fulfilment and delivery', group: 'Operations' },
-  { module: 'orders',       label: 'Orders',       description: 'Customer product orders, pickup or delivery', group: 'Operations' },
+  { module: 'orders',       label: 'Orders',       description: 'Customer product orders, pickup or delivery', group: 'Operations', clientFacing: true, requiresSetup: true },
   { module: 'services',     label: 'Services & prices', description: 'The service menu offered to customers', group: 'Operations' },
   { module: 'shifts',       label: 'Shifts',       description: 'Staff rota and time-off requests', group: 'Operations' },
   { module: 'purchasing',   label: 'Purchasing',   description: 'Supplier orders and goods receiving', group: 'Operations' },
   { module: 'reports',      label: 'Reports',      description: 'Revenue, volume and occupancy analytics', group: 'Operations' },
-  { module: 'boarding',     label: 'Boarding & daycare', description: 'Stays, capacity and check-in/out', group: 'Customer' },
+  { module: 'boarding',     label: 'Boarding & daycare', description: 'Stays, capacity and check-in/out', group: 'Customer', clientFacing: true, requiresSetup: true },
+  { module: 'grooming',     label: 'Grooming',     description: 'Groom services and online grooming bookings', group: 'Customer', clientFacing: true, requiresSetup: true },
   { module: 'messages',     label: 'Messages',     description: 'Customer chat and status updates', group: 'Customer' },
   { module: 'report_cards', label: 'Report cards', description: 'Visit summaries sent to pet parents', group: 'Customer' },
   { module: 'packages',     label: 'Packages',     description: 'Multi-visit passes and memberships', group: 'Customer' },
-  { module: 'adoptions',    label: 'Adoptions',    description: 'Adoptable animals and applications', group: 'Specialty' },
+  { module: 'waivers',      label: 'Waivers & forms', description: 'Intake forms and liability waivers clients complete', group: 'Customer', clientFacing: true, requiresSetup: true },
+  { module: 'adoptions',    label: 'Adoptions',    description: 'Adoptable animals and applications', group: 'Specialty', clientFacing: true },
   { module: 'patients',     label: 'Patient charts', description: 'Per-pet medical history', group: 'Specialty' },
-  { module: 'classes',      label: 'Group classes', description: 'Class scheduling and enrollment', group: 'Specialty' },
-  { module: 'breeding',     label: 'Litters & waitlist', description: 'Litter records and reservations', group: 'Specialty' },
+  { module: 'classes',      label: 'Group classes', description: 'Class scheduling and enrollment', group: 'Specialty', clientFacing: true },
+  { module: 'breeding',     label: 'Litters & waitlist', description: 'Litter records and reservations', group: 'Specialty', clientFacing: true },
 ];
 
 export const ALL_MODULES: BusinessModule[] = MODULE_CATALOG.map(m => m.module);
@@ -184,6 +210,71 @@ export function isModuleEnabled(
   return business.modules.includes(module);
 }
 
+// ─── Module setup-gate framework ──────────────────────────────────────────────
+// A client-facing module that `requiresSetup` is only usable by customers once
+// the owner flips its per-module "open" flag. The flag lives on each module's own
+// settings block, mirroring the existing commerce.ordersOpen precedent.
+
+type BusinessGateFields = {
+  modules?: BusinessModule[];
+  bookable?: boolean;
+  commerce?: { ordersOpen?: boolean };
+  boarding?: { requestsOpen?: boolean };
+  grooming?: { bookingOpen?: boolean };
+  waivers?: { published?: boolean };
+};
+
+// Whether the owner has turned a client-facing module "on". Modules without a
+// dedicated open flag (or that don't require setup) default to open.
+export function moduleOpenFlag(
+  business: BusinessGateFields | null | undefined,
+  module: BusinessModule,
+): boolean {
+  if (!business) return false;
+  switch (module) {
+    case 'appointments': return business.bookable ?? false;
+    case 'orders':       return business.commerce?.ordersOpen ?? false;
+    case 'boarding':     return business.boarding?.requestsOpen ?? false;
+    case 'grooming':     return business.grooming?.bookingOpen ?? false;
+    case 'waivers':      return business.waivers?.published ?? false;
+    default:             return true;
+  }
+}
+
+// A module is "client ready" (live) when it is enabled AND its open flag is set.
+export function isModuleClientReady(
+  business: (BusinessGateFields & { modules?: BusinessModule[] }) | null | undefined,
+  module: BusinessModule,
+): boolean {
+  return isModuleEnabled(business, module) && moduleOpenFlag(business, module);
+}
+
+export interface ModuleSetupStatus {
+  module: BusinessModule;
+  label: string;
+  enabled: boolean;
+  live: boolean;
+  needsSetup: boolean;          // enabled + requiresSetup but not yet live
+}
+
+// Status of every client-facing module, for the "Live for customers" surface in
+// Settings and the dashboard "needs setup" banner.
+export function clientFacingModuleStatuses(
+  business: (BusinessGateFields & { modules?: BusinessModule[] }) | null | undefined,
+): ModuleSetupStatus[] {
+  return MODULE_CATALOG.filter(m => m.clientFacing).map(m => {
+    const enabled = isModuleEnabled(business, m.module);
+    const live = enabled && moduleOpenFlag(business, m.module);
+    return {
+      module: m.module,
+      label: m.label,
+      enabled,
+      live,
+      needsSetup: enabled && !!m.requiresSetup && !live,
+    };
+  });
+}
+
 // Modules every business type starts with, regardless of specialty.
 export const BASE_MODULES: BusinessModule[] = [
   'customers', 'invoices', 'messages', 'reports', 'services', 'shifts', 'packages',
@@ -193,13 +284,13 @@ export const BASE_MODULES: BusinessModule[] = [
 // adjust the set later in Settings.
 export const TYPE_MODULE_PRESETS: Record<BusinessType, BusinessModule[]> = {
   pet_shop:       [...BASE_MODULES, 'orders', 'inventory', 'shipments', 'purchasing'],
-  vet:            [...BASE_MODULES, 'appointments', 'patients', 'report_cards'],
-  grooming_salon: [...BASE_MODULES, 'appointments', 'report_cards'],
+  vet:            [...BASE_MODULES, 'appointments', 'patients', 'report_cards', 'waivers'],
+  grooming_salon: [...BASE_MODULES, 'appointments', 'grooming', 'report_cards', 'waivers'],
   chiro:          [...BASE_MODULES, 'appointments'],
-  trainer:        [...BASE_MODULES, 'appointments', 'classes', 'report_cards'],
+  trainer:        [...BASE_MODULES, 'appointments', 'classes', 'report_cards', 'waivers'],
   dog_walker:     [...BASE_MODULES, 'appointments', 'report_cards'],
-  daycare:        [...BASE_MODULES, 'boarding', 'appointments', 'report_cards'],
-  boarding:       [...BASE_MODULES, 'boarding', 'appointments', 'report_cards'],
+  daycare:        [...BASE_MODULES, 'boarding', 'appointments', 'report_cards', 'waivers'],
+  boarding:       [...BASE_MODULES, 'boarding', 'appointments', 'report_cards', 'waivers'],
   shelter:        [...BASE_MODULES, 'adoptions', 'appointments'],
   breeder:        [...BASE_MODULES, 'breeding'],
   other:          ALL_MODULES,
@@ -219,13 +310,14 @@ export const DEFAULT_ROLE_TEMPLATES: { name: string; capabilities: Capability[] 
       'view_messages', 'manage_messages',
       'view_services', 'view_packages',
       'view_patients', 'view_classes', 'view_adoptions', 'view_breeding',
+      'view_grooming', 'manage_grooming', 'view_waivers', 'manage_waivers',
     ],
   },
   {
     name: 'Worker',
     capabilities: [
       'view_business', 'view_customers', 'view_appointments', 'manage_own_appointments',
-      'view_boarding', 'view_shifts', 'manage_report_cards',
+      'view_boarding', 'view_shifts', 'manage_report_cards', 'view_grooming', 'view_waivers',
     ],
   },
 ];
@@ -295,6 +387,8 @@ export interface Business {
   slotMinutes?: number;        // appointment slot length (default 60)
   commerce?: CommerceSettings; // how the business takes & fulfils product orders
   boarding?: BoardingSettings; // capacity & stay-request settings
+  grooming?: GroomingSettings; // grooming online-booking settings
+  waivers?: WaiversSettings;   // waivers/forms publishing settings
   createdAt: number;
   updatedAt: number;
 }
@@ -358,6 +452,11 @@ export interface BusinessDirectoryEntry {
   // boarding summary — raw capacity & occupancy counts stay private; customers
   // only learn which upcoming dates are full.
   boarding?: { requestsOpen: boolean; pricePerNight?: number; fullDates: string[] };
+  // grooming summary — whether online grooming bookings are accepted.
+  grooming?: { bookingOpen: boolean };
+  groomMenu?: PublicGroomMenuItem[];     // priced groom service list (grooming module)
+  // waivers summary — whether forms are published and required before booking.
+  waivers?: { published: boolean; required?: boolean };
   serviceMenu?: PublicServiceMenuItem[]; // priced service list (services module)
   packages?: PublicPackageItem[];        // purchasable packages (packages module)
   // review aggregate — best-effort merge-write by the reviewing client
@@ -432,6 +531,7 @@ export interface Appointment {
   assignedStaffId?: string;
   assignedStaffName?: string;
   status: AppointmentStatus;
+  kind?: 'general' | 'grooming'; // 'grooming' bookings are gated by the grooming module
   source?: 'staff' | 'customer'; // 'customer' = self-booked via the public directory
   notes?: string;
   invoiceId?: string;
@@ -677,6 +777,90 @@ export interface PublicServiceMenuItem {
   name: string;
   price: number;
   durationMinutes?: number;
+}
+
+// ─── Grooming ─────────────────────────────────────────────────────────────────
+// businesses/{bid}/groomServices — the grooming menu. Grooming bookings reuse the
+// appointments collection tagged with kind: 'grooming'; this keeps a single
+// scheduling pipeline while letting the grooming menu stay independent of the
+// generic services price list.
+
+export interface GroomService {
+  id: string;
+  name: string;
+  description?: string;
+  durationMinutes?: number;    // defaults to GroomingSettings.defaultDurationMinutes
+  price: number;
+  active: boolean;             // shown to customers when true
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GroomingSettings {
+  bookingOpen: boolean;        // accept grooming bookings from the public directory
+  defaultDurationMinutes?: number;
+}
+
+export interface PublicGroomMenuItem {
+  name: string;
+  price: number;
+  durationMinutes?: number;
+}
+
+// ─── Waivers & forms ──────────────────────────────────────────────────────────
+// businesses/{bid}/waiverTemplates (owner-defined) and
+// businesses/{bid}/waiverSubmissions (one per client completion). Active +
+// published templates are projected to businessDirectory/{bid}/waivers so clients
+// can read and complete them.
+
+export type WaiverFieldType = 'text' | 'textarea' | 'checkbox' | 'signature' | 'date';
+
+export interface WaiverField {
+  id: string;
+  label: string;
+  type: WaiverFieldType;
+  required?: boolean;
+}
+
+export interface WaiverTemplate {
+  id: string;
+  title: string;
+  body: string;                // the agreement / intake text
+  fields: WaiverField[];
+  active: boolean;             // included in the public projection when true
+  required?: boolean;          // must be completed before a client may book
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface WaiverSubmission {
+  id: string;
+  templateId: string;
+  templateTitle: string;       // snapshot — template may change later
+  customerUserId?: string;     // app user (always set for client completions)
+  customerId?: string;         // CRM customer (staff-recorded completions)
+  customerName: string;
+  answers: Record<string, string | boolean>; // keyed by field id
+  signedName?: string;
+  signedAt: number;
+  status: 'submitted';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface WaiversSettings {
+  published: boolean;          // forms are live for clients to complete
+  requiredBeforeBooking?: boolean; // required templates must be signed before booking
+}
+
+// Public projection of a published template: businessDirectory/{bid}/waivers/{id}.
+export interface PublicWaiverItem {
+  id: string;                  // == template id
+  title: string;
+  body: string;
+  fields: WaiverField[];
+  required?: boolean;
+  updatedAt: number;
 }
 
 // ─── Staff shifts & time off ──────────────────────────────────────────────────
