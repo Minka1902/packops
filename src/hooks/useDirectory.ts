@@ -7,8 +7,8 @@ import { db } from '@/lib/firebase';
 import {
   businessDirectoryCol, bizAppointmentsCol, bizCustomerPackagesCol, bizOrdersCol,
   bizAdoptionApplicationsCol, bizEnrollmentsCol, bizStaysCol, bizThreadsCol, bizThreadMessagesCol,
-  bizWaitlistCol, directoryAdoptablesCol, directoryCatalogCol, directoryClassesCol,
-  directoryLittersCol, directoryReviewsCol,
+  bizWaitlistCol, bizWaiverSubmissionsCol, directoryAdoptablesCol, directoryCatalogCol,
+  directoryClassesCol, directoryLittersCol, directoryReviewsCol, directoryWaiversCol,
 } from '@/lib/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { stripUndefined } from '@/lib/utils';
@@ -19,6 +19,7 @@ import type {
   BusinessAddress, BusinessDirectoryEntry, BusinessReview, CustomerPackage, FulfillmentMethod,
   ClassEnrollment, GeoPoint, MessageThread, OrderItem, OrderPaymentMethod, PublicCatalogItem,
   PublicClassItem, PublicPackageItem, StayFoodPlan, StayMedication, ThreadMessage,
+  PublicWaiverItem, WaiverSubmission,
 } from '@/types';
 
 export interface DirectoryResult extends BusinessDirectoryEntry {
@@ -84,6 +85,7 @@ export interface BookingInput {
   endAt: number;
   petName?: string;
   notes?: string;
+  kind?: 'general' | 'grooming';
 }
 
 /**
@@ -106,6 +108,7 @@ export function useBooking() {
       serviceLabel: input.serviceLabel,
       startAt: input.startAt,
       endAt: input.endAt,
+      kind: input.kind,
       status: 'scheduled' as const,
       source: 'customer' as const,
       notes: input.notes,
@@ -116,6 +119,101 @@ export function useBooking() {
   };
 
   return { book };
+}
+
+// ─── Grooming (customer side) ─────────────────────────────────────────────────
+// Grooming bookings reuse the appointments pipeline via useBooking with
+// kind: 'grooming'; the public groom menu rides on the directory entry.
+
+// ─── Waivers & forms (customer side) ──────────────────────────────────────────
+
+/** Published waiver/form templates a client can complete. */
+export function usePublicWaivers(bid: string | undefined) {
+  const [waivers, setWaivers] = useState<PublicWaiverItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!bid) { setWaivers([]); setLoading(false); return; }
+    const unsub = onSnapshot(
+      query(directoryWaiversCol(bid), orderBy('title', 'asc')),
+      snap => {
+        setWaivers(snap.docs.map(d => ({ id: d.id, ...d.data() } as PublicWaiverItem)));
+        setLoading(false);
+      },
+      () => setLoading(false),
+    );
+    return () => unsub();
+  }, [bid]);
+
+  return { waivers, loading };
+}
+
+/** The signed-in user's own waiver submissions at a business. */
+export function useMyWaiverSubmissions(bid: string | undefined) {
+  const { user } = useAuth();
+  const [submissions, setSubmissions] = useState<WaiverSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!bid || !user) { setSubmissions([]); setLoading(false); return; }
+    const unsub = onSnapshot(
+      query(bizWaiverSubmissionsCol(bid), where('customerUserId', '==', user.uid)),
+      snap => {
+        setSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() } as WaiverSubmission)));
+        setLoading(false);
+      },
+      () => setLoading(false),
+    );
+    return () => unsub();
+  }, [bid, user]);
+
+  return { submissions, loading };
+}
+
+/**
+ * Required-waiver gate (UI-primary). Returns the published required forms the
+ * signed-in user has not yet completed. Booking surfaces use this to block
+ * bookings until the client signs every required waiver. Firestore rules still
+ * constrain who may submit; full cross-collection enforcement is impractical, so
+ * an unsigned required form is reconciled by staff if a client circumvents the UI.
+ */
+export function useRequiredWaiverGate(bid: string | undefined, required: boolean | undefined) {
+  const { waivers } = usePublicWaivers(required ? bid : undefined);
+  const { submissions, loading } = useMyWaiverSubmissions(required ? bid : undefined);
+
+  const signedIds = new Set(submissions.map(s => s.templateId));
+  const missing = required ? waivers.filter(w => w.required && !signedIds.has(w.id)) : [];
+
+  return { missing, blocked: missing.length > 0, loading };
+}
+
+export interface WaiverSubmitInput {
+  template: PublicWaiverItem;
+  answers: Record<string, string | boolean>;
+  signedName?: string;
+}
+
+/** Customer completes a waiver/form — lands as 'submitted' for staff to review. */
+export function useSubmitWaiver() {
+  const { user } = useAuth();
+
+  const submit = async (bid: string, input: WaiverSubmitInput) => {
+    const now = Date.now();
+    return addDoc(bizWaiverSubmissionsCol(bid), stripUndefined({
+      templateId: input.template.id,
+      templateTitle: input.template.title,
+      customerUserId: user!.uid,
+      customerName: user!.displayName ?? 'Customer',
+      answers: input.answers,
+      signedName: input.signedName,
+      signedAt: now,
+      status: 'submitted' as const,
+      createdAt: now,
+      updatedAt: now,
+    }));
+  };
+
+  return { submit };
 }
 
 /**

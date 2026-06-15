@@ -18,8 +18,9 @@ import {
   bizPackagesCol, bizCustomerPackagesCol, bizAdoptionListingsCol,
   bizAdoptionApplicationsCol, bizChartEntriesCol, bizClassesCol,
   bizEnrollmentsCol, bizLittersCol, bizWaitlistCol,
+  bizGroomServicesCol, bizWaiverTemplatesCol, bizWaiverSubmissionsCol,
   directoryCatalogCol, directoryAdoptablesCol, directoryClassesCol,
-  directoryLittersCol, directoryReviewsCol,
+  directoryLittersCol, directoryReviewsCol, directoryWaiversCol,
 } from '@/lib/firestore';
 import {
   ALL_CAPABILITIES, DEFAULT_ROLE_TEMPLATES, TYPE_MODULE_PRESETS,
@@ -38,6 +39,7 @@ import {
   classSpotsLeft, type ClassEnrollment, type GroupClass,
   type AdoptionApplication, type AdoptionListing,
   type Litter, type WaitlistEntry,
+  type GroomService, type WaiverTemplate, type WaiverSubmission,
 } from '@/types';
 import { derivePackageStatus, packageExpiry } from '@/lib/packages';
 import { medicalCol } from '@/lib/firestore';
@@ -72,6 +74,17 @@ function buildDirectoryEntry(b: Business) {
       ? stripUndefined({
           requestsOpen: b.boarding.requestsOpen && isModuleEnabled(b, 'boarding'),
           pricePerNight: b.boarding.pricePerNight,
+        })
+      : undefined,
+    // Grooming summary — online bookings only when the module is enabled & open.
+    grooming: b.grooming
+      ? { bookingOpen: (b.grooming.bookingOpen ?? false) && isModuleEnabled(b, 'grooming') }
+      : undefined,
+    // Waivers summary — published only when the module is enabled & live.
+    waivers: b.waivers
+      ? stripUndefined({
+          published: (b.waivers.published ?? false) && isModuleEnabled(b, 'waivers'),
+          required: b.waivers.requiredBeforeBooking,
         })
       : undefined,
     updatedAt: Date.now(),
@@ -255,8 +268,9 @@ export function useBusinessActions(bid: string) {
       bizPackagesCol, bizCustomerPackagesCol, bizAdoptionListingsCol,
       bizAdoptionApplicationsCol, bizChartEntriesCol, bizClassesCol,
       bizEnrollmentsCol, bizLittersCol, bizWaitlistCol,
+      bizGroomServicesCol, bizWaiverTemplatesCol, bizWaiverSubmissionsCol,
       directoryCatalogCol, directoryAdoptablesCol, directoryClassesCol,
-      directoryLittersCol, directoryReviewsCol];
+      directoryLittersCol, directoryReviewsCol, directoryWaiversCol];
     for (const sub of subs) {
       const snap = await getDocs(sub(bid)).catch(() => null);
       if (!snap?.size) continue;
@@ -690,6 +704,111 @@ export function useServices(bid: string) {
     void refreshServiceMenu(bid);
   };
   return { services, loading, createService, updateService, deleteService };
+}
+
+// ─── Grooming ─────────────────────────────────────────────────────────────────
+// Grooming bookings reuse the appointments pipeline (tagged kind: 'grooming').
+// The grooming menu lives in its own subcollection; the active items are
+// published to the directory entry so the booking page can show real prices.
+
+async function refreshGroomMenu(bid: string) {
+  try {
+    const snap = await getDocs(bizGroomServicesCol(bid));
+    const menu = snap.docs
+      .map(d => d.data() as GroomService)
+      .filter(s => s.active)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(s => stripUndefined({ name: s.name, price: s.price, durationMinutes: s.durationMinutes }));
+    await setDoc(doc(businessDirectoryCol(), bid), { groomMenu: menu, updatedAt: Date.now() }, { merge: true });
+  } catch { /* directory may not exist for unlisted businesses — ignore */ }
+}
+
+export function useGroomServices(bid: string) {
+  const { items: groomServices, loading } = useCollection<GroomService>(
+    () => (bid ? bizGroomServicesCol(bid) : null), [bid], [orderBy('name', 'asc')],
+  );
+  const createGroomService = async (data: Omit<GroomService, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = Date.now();
+    const ref = await addDoc(bizGroomServicesCol(bid), stripUndefined({ ...data, createdAt: now, updatedAt: now }));
+    void refreshGroomMenu(bid);
+    return ref;
+  };
+  const updateGroomService = async (id: string, data: Partial<GroomService>) => {
+    await updateDoc(doc(bizGroomServicesCol(bid), id), stripUndefined({ ...data, updatedAt: Date.now() }));
+    void refreshGroomMenu(bid);
+  };
+  const deleteGroomService = async (id: string) => {
+    await deleteDoc(doc(bizGroomServicesCol(bid), id));
+    void refreshGroomMenu(bid);
+  };
+  return { groomServices, loading, createGroomService, updateGroomService, deleteGroomService };
+}
+
+export { refreshGroomMenu };
+
+// ─── Waivers & forms ──────────────────────────────────────────────────────────
+// Owners define templates; active ones are projected to the public directory so
+// clients can read and complete them. Submissions land for staff to review.
+
+async function syncWaiverTemplate(bid: string, templateId: string, template: WaiverTemplate | null) {
+  try {
+    const ref = doc(directoryWaiversCol(bid), templateId);
+    if (!template || !template.active) {
+      await deleteDoc(ref);
+      return;
+    }
+    await setDoc(ref, stripUndefined({
+      title: template.title,
+      body: template.body,
+      fields: template.fields,
+      required: template.required,
+      updatedAt: Date.now(),
+    }));
+  } catch { /* projection is best-effort */ }
+}
+
+// Rebuild the whole public waiver projection (settings toggle, module changes).
+export async function resyncWaivers(bid: string, published: boolean) {
+  try {
+    const snap = await getDocs(bizWaiverTemplatesCol(bid));
+    for (const d of snap.docs) {
+      const t = { id: d.id, ...d.data() } as WaiverTemplate;
+      await syncWaiverTemplate(bid, d.id, published && t.active ? t : null);
+    }
+  } catch { /* best-effort */ }
+}
+
+export function useWaiverTemplates(bid: string) {
+  const { items: templates, loading } = useCollection<WaiverTemplate>(
+    () => (bid ? bizWaiverTemplatesCol(bid) : null), [bid], [orderBy('createdAt', 'asc')],
+  );
+  const createTemplate = async (data: Omit<WaiverTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = Date.now();
+    const ref = await addDoc(bizWaiverTemplatesCol(bid), stripUndefined({ ...data, createdAt: now, updatedAt: now }));
+    void syncWaiverTemplate(bid, ref.id, { ...data, id: ref.id, createdAt: now, updatedAt: now } as WaiverTemplate);
+    return ref;
+  };
+  const updateTemplate = async (id: string, data: Partial<WaiverTemplate>) => {
+    const now = Date.now();
+    await updateDoc(doc(bizWaiverTemplatesCol(bid), id), stripUndefined({ ...data, updatedAt: now }));
+    const snap = await getDoc(doc(bizWaiverTemplatesCol(bid), id)).catch(() => null);
+    if (snap?.exists()) void syncWaiverTemplate(bid, id, { id, ...snap.data() } as WaiverTemplate);
+  };
+  const deleteTemplate = async (id: string) => {
+    await deleteDoc(doc(bizWaiverTemplatesCol(bid), id));
+    void syncWaiverTemplate(bid, id, null);
+  };
+  return { templates, loading, createTemplate, updateTemplate, deleteTemplate };
+}
+
+export function useWaiverSubmissions(bid: string) {
+  const { items: submissions, loading } = useCollection<WaiverSubmission>(
+    () => (bid ? bizWaiverSubmissionsCol(bid) : null), [bid], [orderBy('createdAt', 'desc')],
+  );
+  const deleteSubmission = async (id: string) => {
+    await deleteDoc(doc(bizWaiverSubmissionsCol(bid), id));
+  };
+  return { submissions, loading, deleteSubmission };
 }
 
 // ─── Messaging ────────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import {
   computeInvoiceTotals, ALL_CAPABILITIES, CAPABILITY_CATALOG, CAPABILITY_LABELS,
   DEFAULT_ROLE_TEMPLATES, BUSINESS_TYPES, ALL_MODULES, MODULE_CATALOG, isModuleEnabled,
+  moduleOpenFlag, isModuleClientReady, clientFacingModuleStatuses,
 } from '@/types';
 import { distanceKm, formatDistance } from '@/lib/geo';
 
@@ -69,6 +70,55 @@ describe('module gating', () => {
 
   test('catalog and ALL_MODULES stay in sync', () => {
     expect(ALL_MODULES).toEqual(MODULE_CATALOG.map(m => m.module));
+  });
+});
+
+describe('module setup-gate framework', () => {
+  test('moduleOpenFlag reads each module\'s own open flag', () => {
+    expect(moduleOpenFlag({ bookable: true }, 'appointments')).toBe(true);
+    expect(moduleOpenFlag({ bookable: false }, 'appointments')).toBe(false);
+    expect(moduleOpenFlag({ commerce: { ordersOpen: true } }, 'orders')).toBe(true);
+    expect(moduleOpenFlag({ boarding: { requestsOpen: true } }, 'boarding')).toBe(true);
+    expect(moduleOpenFlag({ grooming: { bookingOpen: true } }, 'grooming')).toBe(true);
+    expect(moduleOpenFlag({ waivers: { published: true } }, 'waivers')).toBe(true);
+  });
+
+  test('moduleOpenFlag defaults to false when the flag is unset', () => {
+    expect(moduleOpenFlag({}, 'grooming')).toBe(false);
+    expect(moduleOpenFlag({}, 'waivers')).toBe(false);
+    expect(moduleOpenFlag(null, 'grooming')).toBe(false);
+  });
+
+  test('modules without a dedicated open flag default to open', () => {
+    expect(moduleOpenFlag({}, 'classes')).toBe(true);
+    expect(moduleOpenFlag({}, 'adoptions')).toBe(true);
+  });
+
+  test('isModuleClientReady requires enabled AND open', () => {
+    const biz = { modules: ['grooming'] as typeof ALL_MODULES, grooming: { bookingOpen: true } };
+    expect(isModuleClientReady(biz, 'grooming')).toBe(true);
+    // enabled but not turned on
+    expect(isModuleClientReady({ modules: ['grooming'] as typeof ALL_MODULES }, 'grooming')).toBe(false);
+    // turned on but not enabled
+    expect(isModuleClientReady({ modules: ['customers'] as typeof ALL_MODULES, grooming: { bookingOpen: true } }, 'grooming')).toBe(false);
+  });
+
+  test('clientFacingModuleStatuses flags enabled-but-unconfigured modules as needsSetup', () => {
+    const biz = { modules: ['grooming', 'waivers', 'classes'] as typeof ALL_MODULES, waivers: { published: true } };
+    const statuses = clientFacingModuleStatuses(biz);
+    const grooming = statuses.find(s => s.module === 'grooming')!;
+    const waivers = statuses.find(s => s.module === 'waivers')!;
+    const classes = statuses.find(s => s.module === 'classes')!;
+
+    expect(grooming).toMatchObject({ enabled: true, live: false, needsSetup: true });
+    expect(waivers).toMatchObject({ enabled: true, live: true, needsSetup: false });
+    // classes is client-facing but doesn't require setup, so never "needsSetup"
+    expect(classes).toMatchObject({ enabled: true, live: true, needsSetup: false });
+  });
+
+  test('only client-facing modules appear in statuses', () => {
+    const statuses = clientFacingModuleStatuses({ modules: undefined });
+    expect(statuses.every(s => MODULE_CATALOG.find(m => m.module === s.module)?.clientFacing)).toBe(true);
   });
 });
 
