@@ -19,6 +19,7 @@ import {
   bizAdoptionApplicationsCol, bizChartEntriesCol, bizClassesCol,
   bizEnrollmentsCol, bizLittersCol, bizWaitlistCol,
   bizGroomServicesCol, bizWaiverTemplatesCol, bizWaiverSubmissionsCol,
+  bizExpensesCol, bizPayProfilesCol, bizTimeEntriesCol, bizPayRunsCol, bizPayslipsCol,
   directoryCatalogCol, directoryAdoptablesCol, directoryClassesCol,
   directoryLittersCol, directoryReviewsCol, directoryWaiversCol,
 } from '@/lib/firestore';
@@ -40,8 +41,10 @@ import {
   type AdoptionApplication, type AdoptionListing,
   type Litter, type WaitlistEntry,
   type GroomService, type WaiverTemplate, type WaiverSubmission,
+  type Expense, type PayProfile, type TimeEntry, type PayRun, type PayRunLine, type Payslip,
 } from '@/types';
 import { derivePackageStatus, packageExpiry } from '@/lib/packages';
+import { computePayRunLines, payRunTotal, timeEntriesFromShifts } from '@/lib/payroll';
 import { medicalCol } from '@/lib/firestore';
 import { fullDates, hasCapacityForRange, todayStr } from '@/lib/occupancy';
 
@@ -269,6 +272,7 @@ export function useBusinessActions(bid: string) {
       bizAdoptionApplicationsCol, bizChartEntriesCol, bizClassesCol,
       bizEnrollmentsCol, bizLittersCol, bizWaitlistCol,
       bizGroomServicesCol, bizWaiverTemplatesCol, bizWaiverSubmissionsCol,
+      bizExpensesCol, bizPayProfilesCol, bizTimeEntriesCol, bizPayRunsCol, bizPayslipsCol,
       directoryCatalogCol, directoryAdoptablesCol, directoryClassesCol,
       directoryLittersCol, directoryReviewsCol, directoryWaiversCol];
     for (const sub of subs) {
@@ -1430,6 +1434,189 @@ export function usePurchaseOrders(bid: string) {
   const deletePurchaseOrder = async (id: string) => { await deleteDoc(doc(bizPurchaseOrdersCol(bid), id)); };
 
   return { purchaseOrders, loading, createPurchaseOrder, updatePurchaseOrder, receivePurchaseOrder, deletePurchaseOrder };
+}
+
+// ─── Expenses & bookkeeping ───────────────────────────────────────────────────
+// Staff with manage_expenses record costs as 'pending'; only the owner approves
+// them (rules enforce the owner-only status flip). Approved expenses feed the
+// Reports profit & loss view.
+
+export function useExpenses(bid: string) {
+  const { user } = useAuth();
+  const { items: expenses, loading } = useCollection<Expense>(
+    () => (bid ? bizExpensesCol(bid) : null), [bid], [orderBy('date', 'desc')],
+  );
+  const createExpense = async (
+    data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'status' | 'approvedBy' | 'approvedAt'>,
+  ) => {
+    const now = Date.now();
+    return addDoc(bizExpensesCol(bid), stripUndefined({
+      ...data, status: 'pending', createdBy: user!.uid, createdAt: now, updatedAt: now,
+    } as Expense));
+  };
+  const updateExpense = async (id: string, data: Partial<Expense>) => {
+    await updateDoc(doc(bizExpensesCol(bid), id), stripUndefined({ ...data, updatedAt: Date.now() }));
+  };
+  // Owner-only sign-off (also enforced by firestore.rules).
+  const setExpenseApproved = async (id: string, approved: boolean) => {
+    await updateDoc(doc(bizExpensesCol(bid), id), approved
+      ? { status: 'approved', approvedBy: user!.uid, approvedAt: Date.now(), updatedAt: Date.now() }
+      : { status: 'pending', updatedAt: Date.now() });
+  };
+  const deleteExpense = async (id: string) => { await deleteDoc(doc(bizExpensesCol(bid), id)); };
+  return { expenses, loading, createExpense, updateExpense, setExpenseApproved, deleteExpense };
+}
+
+// ─── Payroll & timesheets ─────────────────────────────────────────────────────
+
+export function usePayProfiles(bid: string) {
+  const { items: profiles, loading } = useCollection<PayProfile>(
+    () => (bid ? bizPayProfilesCol(bid) : null), [bid],
+  );
+  // Doc id == staff userId, so saving is an upsert.
+  const savePayProfile = async (userId: string, data: Omit<PayProfile, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = Date.now();
+    await setDoc(doc(bizPayProfilesCol(bid), userId),
+      stripUndefined({ ...data, createdAt: now, updatedAt: now }), { merge: true });
+  };
+  const deletePayProfile = async (userId: string) => { await deleteDoc(doc(bizPayProfilesCol(bid), userId)); };
+  return { profiles, loading, savePayProfile, deletePayProfile };
+}
+
+export function useTimeEntries(bid: string) {
+  const { user } = useAuth();
+  const { items: timeEntries, loading } = useCollection<TimeEntry>(
+    () => (bid ? bizTimeEntriesCol(bid) : null), [bid], [orderBy('date', 'desc')],
+  );
+  // Members log their own hours; managers log for anyone. Always created pending.
+  const logTime = async (
+    data: Pick<TimeEntry, 'date' | 'hours'> &
+      Partial<Pick<TimeEntry, 'staffUserId' | 'staffName' | 'source' | 'shiftId' | 'notes'>>,
+  ) => {
+    const now = Date.now();
+    return addDoc(bizTimeEntriesCol(bid), stripUndefined({
+      staffUserId: data.staffUserId ?? user!.uid,
+      staffName: data.staffName ?? user!.displayName ?? 'Staff',
+      date: data.date, hours: data.hours, notes: data.notes,
+      source: data.source ?? 'manual', shiftId: data.shiftId,
+      status: 'pending', createdAt: now, updatedAt: now,
+    } as TimeEntry));
+  };
+  // Generate draft entries from the rota for a period (skips shifts already
+  // imported). Each new entry still needs the owner's approval before it pays.
+  const importFromShifts = async (shifts: Shift[], from: string, to: string): Promise<number> => {
+    const drafts = timeEntriesFromShifts(shifts, timeEntries, from, to);
+    if (!drafts.length) return 0;
+    const batch = writeBatch(db);
+    const now = Date.now();
+    for (const d of drafts) {
+      batch.set(doc(bizTimeEntriesCol(bid)), stripUndefined({
+        ...d, status: 'pending', createdAt: now, updatedAt: now,
+      } as Omit<TimeEntry, 'id'>));
+    }
+    await batch.commit();
+    return drafts.length;
+  };
+  // Owner-only approval (rules enforce it).
+  const setTimeEntryApproved = async (id: string, approved: boolean) => {
+    await updateDoc(doc(bizTimeEntriesCol(bid), id), approved
+      ? { status: 'approved', approvedBy: user!.uid, approvedAt: Date.now(), updatedAt: Date.now() }
+      : { status: 'pending', updatedAt: Date.now() });
+  };
+  const deleteTimeEntry = async (id: string) => { await deleteDoc(doc(bizTimeEntriesCol(bid), id)); };
+  return { timeEntries, loading, logTime, importFromShifts, setTimeEntryApproved, deleteTimeEntry };
+}
+
+// Project one payslip per run line (doc id = `${runId}_${userId}`, so the
+// approve→pay sequence upserts the same docs instead of duplicating them).
+function writePayslips(
+  batch: ReturnType<typeof writeBatch>,
+  bid: string,
+  run: PayRun,
+  status: PayRun['status'],
+  paidAt: number | undefined,
+  now: number,
+) {
+  for (const line of run.lines) {
+    batch.set(doc(bizPayslipsCol(bid), `${run.id}_${line.staffUserId}`), stripUndefined({
+      payRunId: run.id, periodStart: run.periodStart, periodEnd: run.periodEnd,
+      staffUserId: line.staffUserId, staffName: line.staffName,
+      payType: line.payType, hours: line.hours, rate: line.rate, amount: line.amount,
+      status, paidAt, createdAt: now, updatedAt: now,
+    } as Omit<Payslip, 'id'>), { merge: true });
+  }
+}
+
+export function usePayRuns(bid: string) {
+  const { user } = useAuth();
+  const { items: payRuns, loading } = useCollection<PayRun>(
+    () => (bid ? bizPayRunsCol(bid) : null), [bid], [orderBy('createdAt', 'desc')],
+  );
+
+  // Draft a run, snapshotting the computed lines so later profile/hours edits
+  // don't silently change an in-flight run (recompute is explicit).
+  const createPayRun = async (
+    period: { periodStart: string; periodEnd: string },
+    profiles: PayProfile[],
+    entries: TimeEntry[],
+  ) => {
+    const now = Date.now();
+    const lines: PayRunLine[] = computePayRunLines(profiles, entries, period);
+    return addDoc(bizPayRunsCol(bid), stripUndefined({
+      ...period, status: 'draft', lines, total: payRunTotal(lines),
+      createdBy: user!.uid, createdAt: now, updatedAt: now,
+    } as PayRun));
+  };
+
+  const recomputePayRun = async (run: PayRun, profiles: PayProfile[], entries: TimeEntry[]) => {
+    const lines = computePayRunLines(profiles, entries, run);
+    await updateDoc(doc(bizPayRunsCol(bid), run.id), { lines, total: payRunTotal(lines), updatedAt: Date.now() });
+  };
+
+  // Owner-only. Approving projects a per-staff payslip each member can read.
+  const approvePayRun = async (run: PayRun) => {
+    const now = Date.now();
+    const batch = writeBatch(db);
+    batch.update(doc(bizPayRunsCol(bid), run.id), {
+      status: 'approved', approvedBy: user!.uid, approvedAt: now, updatedAt: now,
+    });
+    writePayslips(batch, bid, run, 'approved', undefined, now);
+    await batch.commit();
+  };
+
+  // Owner-only. Marks the run paid, stamps the payslips, and posts a single
+  // payroll Expense so the payout flows into profit & loss.
+  const markPayRunPaid = async (run: PayRun) => {
+    const now = Date.now();
+    const expenseRef = await addDoc(bizExpensesCol(bid), stripUndefined({
+      description: `Payroll ${run.periodStart} → ${run.periodEnd}`,
+      category: 'payroll', amount: run.total, date: todayStr(),
+      status: 'approved', approvedBy: user!.uid, approvedAt: now,
+      payRunId: run.id, createdBy: user!.uid, createdAt: now, updatedAt: now,
+    } as Omit<Expense, 'id'>));
+    const batch = writeBatch(db);
+    batch.update(doc(bizPayRunsCol(bid), run.id), {
+      status: 'paid', paidAt: now, expenseId: expenseRef.id, updatedAt: now,
+    });
+    writePayslips(batch, bid, run, 'paid', now, now);
+    await batch.commit();
+  };
+
+  const deletePayRun = async (id: string) => { await deleteDoc(doc(bizPayRunsCol(bid), id)); };
+
+  return { payRuns, loading, createPayRun, recomputePayRun, approvePayRun, markPayRunPaid, deletePayRun };
+}
+
+// A member's own payslips (the staff "My pay" view). Filtered by uid so rules
+// permit the read without exposing colleagues' pay; sorted client-side to avoid
+// a composite index.
+export function useMyPayslips(bid: string, uid: string | undefined) {
+  const { items, loading } = useCollection<Payslip>(
+    () => (bid && uid ? bizPayslipsCol(bid) : null), [bid, uid],
+    uid ? [where('staffUserId', '==', uid)] : [],
+  );
+  const payslips = [...items].sort((a, b) => b.createdAt - a.createdAt);
+  return { payslips, loading };
 }
 
 // ─── Boarding & daycare ───────────────────────────────────────────────────────

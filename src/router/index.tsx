@@ -48,6 +48,8 @@ const GroomingPage          = lazy(() => import('@/pages/business/GroomingPage')
 const WaiversPage           = lazy(() => import('@/pages/business/WaiversPage'));
 const PurchasingPage        = lazy(() => import('@/pages/business/PurchasingPage'));
 const ShiftsPage            = lazy(() => import('@/pages/business/ShiftsPage'));
+const PayrollPage           = lazy(() => import('@/pages/business/PayrollPage'));
+const ExpensesPage          = lazy(() => import('@/pages/business/ExpensesPage'));
 const ReportsPage           = lazy(() => import('@/pages/business/ReportsPage'));
 const MessagesPage          = lazy(() => import('@/pages/business/MessagesPage'));
 const ReportCardsPage       = lazy(() => import('@/pages/business/ReportCardsPage'));
@@ -153,6 +155,8 @@ export const router = createBrowserRouter([
               { path: '/business/waivers',     element: <WaiversPage /> },
               { path: '/business/purchasing',  element: <PurchasingPage /> },
               { path: '/business/shifts',      element: <ShiftsPage /> },
+              { path: '/business/payroll',     element: <PayrollPage /> },
+              { path: '/business/expenses',    element: <ExpensesPage /> },
               { path: '/business/reports',     element: <ReportsPage /> },
               { path: '/business/messages',    element: <MessagesPage /> },
               { path: '/business/report-cards', element: <ReportCardsPage /> },
