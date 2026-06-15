@@ -87,7 +87,13 @@ export type Capability =
   | 'manage_grooming'
   // waivers & forms
   | 'view_waivers'
-  | 'manage_waivers';
+  | 'manage_waivers'
+  // expenses & bookkeeping
+  | 'view_expenses'
+  | 'manage_expenses'
+  // payroll & timesheets
+  | 'view_payroll'
+  | 'manage_payroll';
 
 export interface CapabilityMeta {
   capability: Capability;
@@ -141,6 +147,10 @@ export const CAPABILITY_CATALOG: CapabilityMeta[] = [
   { capability: 'manage_grooming',        label: 'Manage grooming',       group: 'Grooming' },
   { capability: 'view_waivers',           label: 'View waivers & forms',  group: 'Waivers' },
   { capability: 'manage_waivers',         label: 'Manage waivers & forms', group: 'Waivers' },
+  { capability: 'view_expenses',          label: 'View expenses',         group: 'Bookkeeping' },
+  { capability: 'manage_expenses',        label: 'Record expenses',       group: 'Bookkeeping' },
+  { capability: 'view_payroll',           label: 'View payroll',          group: 'Payroll' },
+  { capability: 'manage_payroll',         label: 'Prepare payroll',       group: 'Payroll' },
 ];
 
 export const ALL_CAPABILITIES: Capability[] = CAPABILITY_CATALOG.map(c => c.capability);
@@ -158,6 +168,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = Object.fromEntries(
 export type BusinessModule =
   | 'customers' | 'appointments' | 'invoices' | 'inventory' | 'shipments'
   | 'orders' | 'boarding' | 'services' | 'shifts' | 'purchasing' | 'reports'
+  | 'expenses' | 'payroll'
   | 'messages' | 'report_cards' | 'packages'
   | 'adoptions' | 'patients' | 'classes' | 'breeding'
   | 'grooming' | 'waivers';
@@ -188,6 +199,8 @@ export const MODULE_CATALOG: ModuleCatalogItem[] = [
   { module: 'shifts',       label: 'Shifts',       description: 'Staff rota and time-off requests', group: 'Operations' },
   { module: 'purchasing',   label: 'Purchasing',   description: 'Supplier orders and goods receiving', group: 'Operations' },
   { module: 'reports',      label: 'Reports',      description: 'Revenue, volume and occupancy analytics', group: 'Operations' },
+  { module: 'expenses',     label: 'Expenses',     description: 'Business costs, bookkeeping and profit & loss', group: 'Operations' },
+  { module: 'payroll',      label: 'Payroll',      description: 'Pay rates, timesheets and pay runs', group: 'Operations' },
   { module: 'boarding',     label: 'Boarding & daycare', description: 'Stays, capacity and check-in/out', group: 'Customer', clientFacing: true, requiresSetup: true },
   { module: 'grooming',     label: 'Grooming',     description: 'Groom services and online grooming bookings', group: 'Customer', clientFacing: true, requiresSetup: true },
   { module: 'messages',     label: 'Messages',     description: 'Customer chat and status updates', group: 'Customer' },
@@ -278,6 +291,7 @@ export function clientFacingModuleStatuses(
 // Modules every business type starts with, regardless of specialty.
 export const BASE_MODULES: BusinessModule[] = [
   'customers', 'invoices', 'messages', 'reports', 'services', 'shifts', 'packages',
+  'expenses', 'payroll',
 ];
 
 // Modules auto-enabled at registration per business type. The owner can always
@@ -1236,5 +1250,143 @@ export interface PublicLitterItem {
   bornAt?: string;
   expectedAt?: string;
   availableCount: number;
+  updatedAt: number;
+}
+
+// ─── Expenses & bookkeeping ───────────────────────────────────────────────────
+// businesses/{bid}/expenses. Staff with manage_expenses record costs as 'pending';
+// only the owner approves them — approval is the money sign-off. Approved expenses
+// feed the profit & loss view in Reports. Payroll runs auto-post a payroll expense
+// when the owner marks them paid (see PayRun.expenseId).
+
+export type ExpenseCategory =
+  | 'supplies' | 'rent' | 'utilities' | 'payroll' | 'marketing'
+  | 'insurance' | 'equipment' | 'travel' | 'fees' | 'other';
+
+export const EXPENSE_CATEGORIES: { category: ExpenseCategory; label: string }[] = [
+  { category: 'supplies',  label: 'Supplies' },
+  { category: 'rent',      label: 'Rent' },
+  { category: 'utilities', label: 'Utilities' },
+  { category: 'payroll',   label: 'Payroll' },
+  { category: 'marketing', label: 'Marketing' },
+  { category: 'insurance', label: 'Insurance' },
+  { category: 'equipment', label: 'Equipment' },
+  { category: 'travel',    label: 'Travel' },
+  { category: 'fees',      label: 'Fees & charges' },
+  { category: 'other',     label: 'Other' },
+];
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = Object.fromEntries(
+  EXPENSE_CATEGORIES.map(c => [c.category, c.label]),
+) as Record<ExpenseCategory, string>;
+
+export type ExpenseStatus = 'pending' | 'approved';
+export type ExpensePaymentMethod = 'cash' | 'card' | 'transfer' | 'other';
+
+export interface Expense {
+  id: string;
+  description: string;
+  category: ExpenseCategory;
+  amount: number;
+  date: string;                // 'YYYY-MM-DD' the cost was incurred
+  vendor?: string;
+  paymentMethod?: ExpensePaymentMethod;
+  supplierId?: string;         // optional link to a purchasing supplier
+  purchaseOrderId?: string;    // optional link to a received purchase order
+  receiptURL?: string;
+  notes?: string;
+  status: ExpenseStatus;       // 'approved' requires the owner
+  approvedBy?: string;
+  approvedAt?: number;
+  payRunId?: string;           // set when auto-posted from a paid pay run
+  createdAt: number;
+  updatedAt: number;
+  createdBy: string;
+}
+
+// ─── Payroll & timesheets ─────────────────────────────────────────────────────
+// businesses/{bid}/payProfiles/{userId} — pay rate per staff member (doc id == uid).
+// businesses/{bid}/timeEntries           — worked hours (manual or logged off a shift).
+// businesses/{bid}/payRuns/{id}          — a pay period; lines are computed from
+//   approved time entries (hourly) or the flat salary amount. Only the owner
+//   approves a run and marks it paid; paying posts a payroll Expense and projects
+//   a per-staff Payslip each member can read.
+// businesses/{bid}/payslips/{id}         — staff-readable projection of their pay.
+
+export type PayType = 'hourly' | 'salary';
+
+export interface PayProfile {
+  id: string;                  // == staff userId
+  staffName: string;
+  payType: PayType;
+  hourlyRate?: number;         // hourly staff
+  salaryPerPeriod?: number;    // salaried staff — flat amount per pay run
+  active: boolean;             // included in pay runs when true
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type TimeEntryStatus = 'pending' | 'approved';
+
+export interface TimeEntry {
+  id: string;
+  staffUserId: string;
+  staffName: string;
+  date: string;                // 'YYYY-MM-DD'
+  hours: number;               // worked hours (decimal)
+  source: 'manual' | 'shift';  // 'shift' = generated from a scheduled shift
+  shiftId?: string;
+  notes?: string;
+  status: TimeEntryStatus;     // only approved entries are paid; owner approves
+  approvedBy?: string;
+  approvedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type PayRunStatus = 'draft' | 'approved' | 'paid';
+
+export interface PayRunLine {
+  staffUserId: string;
+  staffName: string;
+  payType: PayType;
+  hours?: number;              // hourly lines
+  rate?: number;               // hourly lines
+  amount: number;
+}
+
+export interface PayRun {
+  id: string;
+  periodStart: string;         // 'YYYY-MM-DD' inclusive
+  periodEnd: string;           // 'YYYY-MM-DD' inclusive
+  status: PayRunStatus;
+  lines: PayRunLine[];
+  total: number;
+  notes?: string;
+  approvedBy?: string;
+  approvedAt?: number;
+  paidAt?: number;
+  expenseId?: string;          // payroll Expense posted when marked paid
+  createdAt: number;
+  updatedAt: number;
+  createdBy: string;
+}
+
+// Per-staff projection written when the owner approves a run, so each member can
+// read their own pay without seeing the whole run.
+export interface Payslip {
+  id: string;
+  payRunId: string;
+  periodStart: string;
+  periodEnd: string;
+  staffUserId: string;
+  staffName: string;
+  payType: PayType;
+  hours?: number;
+  rate?: number;
+  amount: number;
+  status: PayRunStatus;        // mirrors the run ('approved' or 'paid')
+  paidAt?: number;
+  createdAt: number;
   updatedAt: number;
 }

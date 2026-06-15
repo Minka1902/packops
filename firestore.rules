@@ -319,6 +319,64 @@ service cloud.firestore {
         allow write: if hasCap(bid, 'manage_purchasing');
       }
 
+      // ─── Expenses & bookkeeping ─────────────────────────────────────────────
+      // Staff record costs; only the owner approves them (the money sign-off).
+      match /expenses/{id} {
+        allow read:   if hasCap(bid, 'view_expenses') || hasCap(bid, 'manage_expenses');
+        // Owner may post an approved expense (e.g. a paid pay run); staff record
+        // pending ones only.
+        allow create: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_expenses') && request.resource.data.status == 'pending');
+        allow delete: if hasCap(bid, 'manage_expenses');
+        // Managers edit fields but can't change approval status — only the owner
+        // flips 'pending' ⇄ 'approved'.
+        allow update: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_expenses') && request.resource.data.status == resource.data.status);
+      }
+
+      // ─── Payroll & timesheets ───────────────────────────────────────────────
+      // Pay rates are sensitive: only payroll staff (and the member themselves)
+      // may read them; managers set them.
+      match /payProfiles/{uid} {
+        allow read:  if hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll') ||
+          (isBizMember(bid) && uid == request.auth.uid);
+        allow write: if hasCap(bid, 'manage_payroll');
+      }
+
+      match /timeEntries/{id} {
+        allow read: if isBizMember(bid) || hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll');
+        // Members log their own pending hours; managers log for anyone.
+        allow create: if (hasCap(bid, 'manage_payroll') && request.resource.data.status == 'pending') ||
+          (isBizMember(bid) && request.resource.data.staffUserId == request.auth.uid
+            && request.resource.data.status == 'pending');
+        // Only the owner approves (status flip); managers/own author edit pending.
+        allow update: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_payroll') && request.resource.data.status == resource.data.status) ||
+          (isBizMember(bid) && resource.data.staffUserId == request.auth.uid
+            && resource.data.status == 'pending' && request.resource.data.status == 'pending');
+        allow delete: if hasCap(bid, 'manage_payroll') ||
+          (isBizMember(bid) && resource.data.staffUserId == request.auth.uid
+            && resource.data.status == 'pending');
+      }
+
+      match /payRuns/{id} {
+        allow read:   if hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll');
+        allow create: if hasCap(bid, 'manage_payroll') && request.resource.data.status == 'draft';
+        allow delete: if hasCap(bid, 'manage_payroll') && resource.data.status == 'draft';
+        // Managers prepare/recompute drafts; only the owner approves or pays.
+        allow update: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_payroll')
+            && request.resource.data.status == 'draft' && resource.data.status == 'draft');
+      }
+
+      // Per-staff payslip projection: a member reads their own; payroll staff
+      // read all. Written by the owner (approve/pay) or payroll managers.
+      match /payslips/{id} {
+        allow read:  if hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll') ||
+          (isBizMember(bid) && resource.data.staffUserId == request.auth.uid);
+        allow write: if isBizOwner(bid) || hasCap(bid, 'manage_payroll');
+      }
+
       match /threads/{tid} {
         // Staff with messaging caps, or the customer whose thread this is.
         allow read: if hasCap(bid, 'view_messages') || hasCap(bid, 'manage_messages') ||
