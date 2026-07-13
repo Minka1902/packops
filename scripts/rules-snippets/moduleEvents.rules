@@ -1,0 +1,6 @@
+      // moduleEvents — Module Store audit log (owner-create, member-read, immutable)
+      match /moduleEvents/{eventId} {
+        allow read:           if isBizMember(bid);
+        allow create:         if isBizOwner(bid);
+        allow update, delete: if false;
+      }

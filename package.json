@@ -11,7 +11,10 @@
     "test": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:desktop": "playwright test --project=desktop",
-    "seed": "ts-node --project scripts/tsconfig.json scripts/seed-demo.ts"
+    "seed": "ts-node --project scripts/tsconfig.json scripts/seed-demo.ts",
+    "backfill": "ts-node --project scripts/tsconfig.json scripts/backfill-owner-staff.ts",
+    "gen:rules": "node scripts/gen-rules.cjs",
+    "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\""
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
