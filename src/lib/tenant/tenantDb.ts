@@ -10,7 +10,7 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { businessDirectoryCol } from '@/lib/firestore';
+import { businessesCol, businessDirectoryCol } from '@/lib/firestore';
 import { TENANT_CONVERTERS, type TenantCollection, type TenantSchema } from './schema';
 
 export interface TenantDb {
@@ -19,6 +19,8 @@ export interface TenantDb {
   doc<K extends TenantCollection>(name: K, id: string): DocumentReference<TenantSchema[K]>;
   batch(): WriteBatch;
   runTransaction<T>(fn: (tx: Transaction) => Promise<T>): Promise<T>;
+  /** The business doc itself (businesses/{id}) — e.g. to update staffUserIds. */
+  businessDoc(): DocumentReference<DocumentData>;
   /** The public directory projection doc for this tenant (businessDirectory/{id}). */
   directoryDoc(): DocumentReference<DocumentData>;
 }
@@ -33,6 +35,7 @@ export function tenantDb(tenantId: string): TenantDb {
       doc(db, ...seg, name, id).withConverter(TENANT_CONVERTERS[name]),
     batch: () => writeBatch(db),
     runTransaction: (fn) => fbRunTransaction(db, fn),
+    businessDoc: () => doc(businessesCol(), tenantId),
     directoryDoc: () => doc(businessDirectoryCol(), tenantId),
   };
 }

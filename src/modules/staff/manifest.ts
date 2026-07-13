@@ -3,6 +3,7 @@
 // attached in Step 7 (staff module build). `staff` uses a hand-written rules
 // snippet (custom) for the self-edit anti-escalation guard.
 
+import { lazy } from 'react';
 import { UserCog } from 'lucide-react';
 import type { ModuleManifest } from '../types';
 
@@ -25,6 +26,11 @@ export const staffManifest: ModuleManifest = {
   navItems: [
     { to: '/business/staff', label: 'Staff', icon: UserCog, level: 'read' },
   ],
+  routes: [
+    { path: 'staff', lazy: () => import('./pages/StaffListPage').then((m) => ({ Component: m.default })) },
+    { path: 'staff/:userId', lazy: () => import('./pages/StaffDetailPage').then((m) => ({ Component: m.default })) },
+  ],
+  summaryView: { component: lazy(() => import('./StaffSummary')) },
   dataModels: [
     { collection: 'staff', module: 'staff', custom: true, legacyCaps: ['manage_staff'] },
   ],
