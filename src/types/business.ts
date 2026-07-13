@@ -1,5 +1,7 @@
 // ─── Business CRM domain types ────────────────────────────────────────────────
 
+import type { ModuleId } from '@/modules/ids';
+
 export type BusinessType =
   | 'dog_walker' | 'shelter' | 'trainer' | 'pet_shop' | 'vet'
   | 'chiro' | 'grooming_salon' | 'daycare' | 'boarding' | 'breeder' | 'other';
@@ -286,7 +288,8 @@ export interface Business {
   ownerUserId: string;         // founding owner — always full capabilities
   staffUserIds: string[];      // array-contains index for "businesses I belong to"
   requireMfa?: boolean;
-  modules?: BusinessModule[];  // enabled pages — undefined ⇒ all enabled
+  modules?: BusinessModule[];  // legacy enabled pages — undefined ⇒ all enabled
+  unlockedModules?: ModuleId[]; // v2 unlock set (mirrors modules); undefined ⇒ un-migrated
   listed?: boolean;            // discoverable in the public directory (default true)
   bookable?: boolean;          // customers may self-book appointments online
   services?: string[];         // offered services, shown to customers

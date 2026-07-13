@@ -42,6 +42,7 @@ import {
 import { derivePackageStatus, packageExpiry } from '@/lib/packages';
 import { medicalCol } from '@/lib/firestore';
 import { fullDates, hasCapacityForRange, todayStr } from '@/lib/occupancy';
+import { resolveUnlockedModules, grantsFromCapabilities } from '@/modules/legacy';
 
 // Build the public directory projection of a business and publish it (or remove
 // it from the directory when the owner unlists the business).
@@ -195,12 +196,15 @@ export function useCreateBusiness() {
       Partial<Omit<Business, 'id' | 'name' | 'type' | 'ownerUserId' | 'staffUserIds' | 'createdAt' | 'updatedAt'>>,
   ): Promise<string> => {
     const now = Date.now();
+    // Each business type starts with the modules it actually needs; the owner
+    // can adjust the set later in the Module Store.
+    const modules = data.modules ?? TYPE_MODULE_PRESETS[data.type];
     const ref = await addDoc(businessesCol(), stripUndefined({
       ...data,
       currency: data.currency ?? 'USD',
-      // Each business type starts with the modules it actually needs; the owner
-      // can adjust the set later in Settings.
-      modules: data.modules ?? TYPE_MODULE_PRESETS[data.type],
+      modules,
+      // v2 unlock set (mirrors `modules`); core modules always included.
+      unlockedModules: resolveUnlockedModules({ modules }),
       ownerUserId: user!.uid,
       staffUserIds: [user!.uid],
       createdAt: now,
@@ -208,17 +212,20 @@ export function useCreateBusiness() {
     } as Business));
 
     const batch = writeBatch(db);
-    // System owner role — all capabilities, undeletable.
+    // System owner role — all capabilities/grants, undeletable.
     batch.set(doc(bizRolesCol(ref.id), 'owner'), {
-      name: 'Owner', capabilities: ALL_CAPABILITIES, isSystem: true, createdAt: now, updatedAt: now,
+      name: 'Owner', capabilities: ALL_CAPABILITIES, grants: grantsFromCapabilities(ALL_CAPABILITIES),
+      isSystem: true, createdAt: now, updatedAt: now,
     });
-    // Default starter roles.
+    // Default starter roles — grants derived from their capability set.
     DEFAULT_ROLE_TEMPLATES.forEach((tpl, i) => {
       batch.set(doc(bizRolesCol(ref.id), `role_${i}_${now}`), {
-        name: tpl.name, capabilities: tpl.capabilities, createdAt: now, updatedAt: now,
+        name: tpl.name, capabilities: tpl.capabilities, grants: grantsFromCapabilities(tpl.capabilities),
+        createdAt: now, updatedAt: now,
       });
     });
-    // Owner staff record.
+    // Owner staff record. Perms snapshot stays empty — the owner short-circuits
+    // every permission check (client and rules).
     batch.set(doc(bizStaffCol(ref.id), user!.uid), stripUndefined({
       userId: user!.uid,
       displayName: user!.displayName,
@@ -226,6 +233,8 @@ export function useCreateBusiness() {
       photoURL: user!.photoURL,
       roleId: 'owner',
       capabilities: ALL_CAPABILITIES,
+      perms: [],
+      permsSyncedAt: now,
       active: true,
       joinedAt: now,
       invitedBy: user!.uid,

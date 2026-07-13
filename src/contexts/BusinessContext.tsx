@@ -1,9 +1,10 @@
-import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useMemo, useCallback, type ReactNode } from 'react';
 import { query, where, onSnapshot, doc } from 'firebase/firestore';
 import { businessesCol, bizStaffCol } from '@/lib/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSessionMode } from '@/contexts/SessionModeContext';
 import { tenantDb, type TenantDb } from '@/lib/tenant/tenantDb';
+import { migrateTenantToV2 } from '@/lib/tenant/migrate';
 import { makeEffectivePerms, type EffectivePerms } from '@/modules/permissions';
 import { resolveUnlockedModules, permsFromCapabilities } from '@/modules/legacy';
 import type { ModuleId } from '@/modules/ids';
@@ -90,6 +91,18 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isOwner = !!user && !!activeBusiness && activeBusiness.ownerUserId === user.uid;
+
+  // Lazy, owner-triggered, once-per-business migration to the v2 module model.
+  // Idempotent (the write flips unlockedModules from undefined, which re-latches
+  // this guard); the onSnapshot listener above then re-delivers the migrated doc.
+  const migratedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isOwner || !activeBusiness) return;
+    if (activeBusiness.unlockedModules !== undefined) return;
+    if (migratedRef.current === activeBusiness.id) return;
+    migratedRef.current = activeBusiness.id;
+    void migrateTenantToV2(activeBusiness).catch(() => { migratedRef.current = null; });
+  }, [isOwner, activeBusiness]);
 
   const tenant = useMemo(
     () => (activeBusiness ? tenantDb(activeBusiness.id) : null),
