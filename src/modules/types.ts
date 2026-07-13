@@ -78,6 +78,17 @@ export interface ModuleManifest {
   requiresSetup?: (business: { unlockedModules?: ModuleId[] }) => boolean;
 }
 
+// ─── Module Store audit log ───────────────────────────────────────────────────
+// businesses/{bid}/moduleEvents/{eventId}. Owner-create, member-read, immutable.
+export interface ModuleEvent {
+  id: string;
+  type: 'unlock' | 'lock';
+  moduleId: ModuleId;
+  byUserId: string;
+  byName: string;
+  at: number;
+}
+
 // A stub manifest carries only the Module-Store-visible fields. Helper to build
 // one without repeating the defaults (no routes/nav/summaryView/dataModels).
 export type StubManifestInput = Pick<
