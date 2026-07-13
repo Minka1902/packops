@@ -4,6 +4,7 @@
 // snippet (custom): members may READ roles (for the permission matrix), only
 // roles-action may write, and the system 'owner' role is immutable.
 
+import { lazy } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import type { ModuleManifest } from '../types';
 
@@ -26,6 +27,12 @@ export const rolesManifest: ModuleManifest = {
   navItems: [
     { to: '/business/roles', label: 'Roles', icon: ShieldCheck, level: 'read' },
   ],
+  routes: [
+    { path: 'roles', lazy: () => import('./pages/RolesListPage').then((m) => ({ Component: m.default })) },
+    { path: 'roles/new', lazy: () => import('./pages/RoleEditorPage').then((m) => ({ Component: m.default })) },
+    { path: 'roles/:roleId', lazy: () => import('./pages/RoleEditorPage').then((m) => ({ Component: m.default })) },
+  ],
+  summaryView: { component: lazy(() => import('./RolesSummary')) },
   dataModels: [
     { collection: 'roles', module: 'roles', custom: true, legacyCaps: ['manage_roles'] },
   ],
