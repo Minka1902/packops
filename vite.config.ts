@@ -24,6 +24,6 @@ export default defineConfig({
     pool: 'forks',
     // Emulator rules tests live in scripts/ and run via vitest.rules.config.ts
     // (npm run test:rules) — they need the Firestore emulator, not jsdom.
-    exclude: ['**/node_modules/**', '**/dist/**', 'scripts/**', '**/.claude/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'scripts/**', '**/.claude/**', 'e2e/**'],
   },
 });
