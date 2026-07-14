@@ -1,9 +1,23 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import RequireMode from '@/components/layout/RequireMode';
 import AppShell from '@/components/layout/AppShell';
 import BusinessAppShell from '@/components/layout/BusinessAppShell';
+import { ALL_MANIFESTS } from '@/modules/registry';
+import { ModuleGate } from '@/modules/react';
+
+// Every module's routes, each mounted under a ModuleGate that enforces unlock +
+// read at runtime (locked/denied modules render an in-place notice). Registered
+// statically for all modules so navigation doesn't churn as modules unlock.
+function moduleRouteGroups(): RouteObject[] {
+  return ALL_MANIFESTS
+    .filter((m) => m.routes?.length)
+    .map((m) => ({
+      element: <ModuleGate moduleId={m.id} />,
+      children: (m.routes ?? []).map((r) => ({ path: `/business/${r.path}`, lazy: r.lazy })),
+    }));
+}
 
 // Auth + public pages — kept eager (needed before any JS chunk arrives)
 import LoginPage    from '@/pages/auth/LoginPage';
@@ -58,8 +72,6 @@ const BreedingPage          = lazy(() => import('@/pages/business/BreedingPage')
 const BusinessLittersPage   = lazy(() => import('@/pages/discover/BusinessLittersPage'));
 const MyMessagesPage        = lazy(() => import('@/pages/messages/MyMessagesPage'));
 const ShipmentsPage         = lazy(() => import('@/pages/business/ShipmentsPage'));
-const StaffPage             = lazy(() => import('@/pages/business/StaffPage'));
-const RolesPage             = lazy(() => import('@/pages/business/RolesPage'));
 const SecurityPage          = lazy(() => import('@/pages/business/SecurityPage'));
 const BusinessSettingsPage  = lazy(() => import('@/pages/business/BusinessSettingsPage'));
 
@@ -155,10 +167,10 @@ export const router = createBrowserRouter([
               { path: '/business/adoptions',   element: <AdoptionsPage /> },
               { path: '/business/breeding',    element: <BreedingPage /> },
               { path: '/business/shipments',    element: <ShipmentsPage /> },
-              { path: '/business/staff',        element: <StaffPage /> },
-              { path: '/business/roles',        element: <RolesPage /> },
               { path: '/business/security',     element: <SecurityPage /> },
               { path: '/business/settings',     element: <BusinessSettingsPage /> },
+              // Module-provided routes (staff, roles, …) gated by ModuleGate.
+              ...moduleRouteGroups(),
             ],
           },
         ],

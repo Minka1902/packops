@@ -1,6 +1,6 @@
 import {
   Home, Activity, Dumbbell, Stethoscope, Users, Cpu, QrCode, Settings,
-  Calendar, Receipt, Package, Truck, UserCog, ShieldCheck, Lock, MapPin,
+  Calendar, Receipt, Package, Truck, Lock, MapPin,
   ShoppingCart, BedDouble, Tags, PackagePlus, CalendarClock, BarChart3, MessageSquare,
   FileHeart, Ticket, GraduationCap, HeartHandshake, PawPrint,
 } from 'lucide-react';
@@ -60,8 +60,7 @@ export const BUSINESS_NAV_ITEMS: BusinessNavItem[] = [
   { to: '/business/purchasing',   label: 'Purchasing',   icon: PackagePlus, cap: 'view_purchasing', module: 'purchasing' },
   { to: '/business/shifts',       label: 'Shifts',       icon: CalendarClock, cap: 'view_shifts',  module: 'shifts' },
   { to: '/business/reports',      label: 'Reports',      icon: BarChart3, cap: 'view_reports',     module: 'reports' },
-  { to: '/business/staff',        label: 'Staff',        icon: UserCog,  cap: 'manage_staff' },
-  { to: '/business/roles',        label: 'Roles',        icon: ShieldCheck, cap: 'manage_roles' },
+  // Staff & Roles now come from the module registry (see BusinessSidebar).
   { to: '/business/security',     label: 'Security',     icon: Lock },
   { to: '/business/settings',     label: 'Settings',     icon: Settings },
 ];

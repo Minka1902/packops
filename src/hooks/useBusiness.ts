@@ -280,40 +280,9 @@ export function useBusinessActions(bid: string) {
 }
 
 // ─── Roles ────────────────────────────────────────────────────────────────────
-
-export function useBusinessRoles(bid: string) {
-  const { user } = useAuth();
-  const { items: roles, loading } = useCollection<BusinessRole>(
-    () => (bid ? bizRolesCol(bid) : null), [bid],
-  );
-
-  const createRole = async (name: string, capabilities: BusinessRole['capabilities']) => {
-    const now = Date.now();
-    await addDoc(bizRolesCol(bid), { name, capabilities, createdAt: now, updatedAt: now });
-  };
-
-  // Editing a role fans the new capabilities out to every staff holding it so
-  // the denormalized snapshots stay in sync (firestore.rules read those copies).
-  const updateRole = async (roleId: string, data: Partial<BusinessRole>) => {
-    const batch = writeBatch(db);
-    batch.update(doc(bizRolesCol(bid), roleId), stripUndefined({ ...data, updatedAt: Date.now() }));
-    if (data.capabilities) {
-      const staffSnap = await getDocs(query(bizStaffCol(bid), where('roleId', '==', roleId)));
-      staffSnap.docs.forEach(d => {
-        // Never downgrade the owner's own record below full caps.
-        if (d.id === user?.uid && roleId === 'owner') return;
-        batch.update(d.ref, { capabilities: data.capabilities });
-      });
-    }
-    await batch.commit();
-  };
-
-  const deleteRole = async (roleId: string) => {
-    await deleteDoc(doc(bizRolesCol(bid), roleId));
-  };
-
-  return { roles, loading, createRole, updateRole, deleteRole };
-}
+// Roles are owned by the roles module (src/modules/roles). useBusinessStaff
+// below is retained only for not-yet-migrated legacy pages (appointments,
+// shifts) that need the staff roster.
 
 // ─── Staff ──────────────────────────────────────────────────────────────────
 
