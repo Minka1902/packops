@@ -48,7 +48,7 @@ const SettingsPage              = lazy(() => import('@/pages/settings/SettingsPa
 
 // Business CRM pages
 const BusinessRegisterPage  = lazy(() => import('@/pages/business/BusinessRegisterPage'));
-const BusinessDashboardPage = lazy(() => import('@/pages/business/BusinessDashboardPage'));
+const OwnerDashboardPage    = lazy(() => import('@/pages/business/OwnerDashboardPage'));
 const CustomersPage         = lazy(() => import('@/pages/business/CustomersPage'));
 const AppointmentsPage      = lazy(() => import('@/pages/business/AppointmentsPage'));
 const InvoicesPage          = lazy(() => import('@/pages/business/InvoicesPage'));
@@ -146,7 +146,7 @@ export const router = createBrowserRouter([
               </Suspense>
             ),
             children: [
-              { path: '/business',              element: <BusinessDashboardPage /> },
+              { path: '/business',              element: <OwnerDashboardPage /> },
               { path: '/business/new',          element: <BusinessRegisterPage /> },
               { path: '/business/customers',    element: <CustomersPage /> },
               { path: '/business/appointments', element: <AppointmentsPage /> },
