@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Plus, AlertTriangle, CalendarClock, CheckCircle, Syringe, Pill, Bug, Zap, Stethoscope, Scissors, Activity } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, AlertTriangle, CalendarClock, CheckCircle, Syringe, Pill, Bug, Zap, Stethoscope, Scissors, Activity, Building2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useDog } from '@/contexts/DogContext';
 import { useMedical, useUpcomingDue, useActiveMedications } from '@/hooks/useMedical';
+import { useDogClinics } from '@/hooks/useDogClinic';
+import ClinicCard from '@/components/medical/ClinicCard';
 import MedicalRecordCard from '@/components/medical/MedicalRecordCard';
 import MedicalRecordForm from '@/components/medical/MedicalRecordForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -242,6 +245,41 @@ function CategorySection({ dogId, category }: { dogId: string; category: Medical
 // MedicalPage
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// ClinicSection — who to call when something is wrong
+// ---------------------------------------------------------------------------
+
+function ClinicSection({ dogId, dogName }: { dogId: string; dogName: string }) {
+  const { clinics, loading } = useDogClinics(dogId);
+
+  if (loading) return <Skeleton className="h-32 w-full rounded-2xl" />;
+
+  // No vet on the team: point at the one place that can fix that, rather than
+  // rendering nothing and leaving the gap unexplained.
+  if (clinics.length === 0) {
+    return (
+      <Link
+        to="/humans"
+        className="flex flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border/40 py-8 text-center transition-colors hover:border-border/70"
+      >
+        <Building2 className="h-7 w-7 text-muted-foreground/50" />
+        <span className="text-sm font-medium">No vet on <span className="capitalize">{dogName}</span>&rsquo;s team yet</span>
+        <span className="text-xs text-muted-foreground">Add a clinic to keep their details here</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {clinics.map(c => <ClinicCard key={c.id} entry={c} dogName={dogName} />)}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MedicalPage
+// ---------------------------------------------------------------------------
+
 export default function MedicalPage() {
   const { activeDog } = useDog();
   const [activeCategory, setActiveCategory] = useState<MedicalCategory>('vaccination');
@@ -250,7 +288,10 @@ export default function MedicalPage() {
   if (!activeDog) return <div className="p-4 text-muted-foreground">No active dog selected.</div>;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 lg:flex-1 lg:overflow-y-auto lg:p-4 px-4 sm:px-0 pb-[88px] sm:pb-4 pt-2">
+    // `w-full` matters: this div is a flex item and `mx-auto` cancels the
+    // default cross-axis stretch, so without it the page sizes to its content
+    // and overflows narrow viewports instead of filling them.
+    <div className="w-full max-w-2xl mx-auto space-y-6 lg:flex-1 lg:overflow-y-auto lg:p-4 px-4 sm:px-0 pb-[88px] sm:pb-4 pt-2">
       {/* Header */}
       <div>
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Medical</h1>
@@ -258,6 +299,11 @@ export default function MedicalPage() {
       </div>
 
       <HealthSummaryBar dueItems={dueItems} dogId={activeDog.id} />
+
+      <section className="space-y-2">
+        <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Clinic</h2>
+        <ClinicSection dogId={activeDog.id} dogName={activeDog.name} />
+      </section>
 
       <CategoryRail
         categories={MEDICAL_CATEGORIES}
