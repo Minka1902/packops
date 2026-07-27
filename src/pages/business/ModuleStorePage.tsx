@@ -4,12 +4,14 @@
 // unlocked modules depend on it. Every change writes a moduleEvents audit entry.
 
 import { useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Loader2, Sparkles } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+import { listContainer, listItem } from '@/lib/motion';
 import { useBusiness } from '@/contexts/BusinessContext';
 import {
   ALL_MANIFESTS, MODULE_REGISTRY, missingDependencies, unlockClosure, dependentModules,
@@ -21,9 +23,16 @@ import { ModuleCard } from '@/components/store/ModuleCard';
 
 export default function ModuleStorePage() {
   const { activeBusiness, unlockedModules, isOwner, tenant, myStaff } = useBusiness();
+  const location = useLocation();
+  const reduced = useReducedMotion();
   const [busyId, setBusyId] = useState<ModuleId | null>(null);
   const [closure, setClosure] = useState<{ manifest: ModuleManifest; ids: ModuleId[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Set by business registration and by the owner-dashboard redirect.
+  const firstRun = (location.state as { firstRun?: boolean } | null)?.firstRun === true;
+  const container = useMemo(() => listContainer(reduced), [reduced]);
+  const item = useMemo(() => listItem(reduced), [reduced]);
 
   const unlockedSet = useMemo(() => new Set(unlockedModules), [unlockedModules]);
   const groups = useMemo(
@@ -79,26 +88,49 @@ export default function ModuleStorePage() {
         </p>
       </header>
 
+      {firstRun && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Sparkles className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Pick the tools your business needs</p>
+            <p className="text-sm text-muted-foreground">
+              Nothing is permanent — unlock what you need now and change it any time.
+            </p>
+          </div>
+          <Link to="/business" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+            Skip for now
+          </Link>
+        </div>
+      )}
+
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {groups.map(({ category, manifests }) => (
         <section key={category.id} className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">{category.label}</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+          >
             {manifests.map((m) => (
-              <ModuleCard
-                key={m.id}
-                manifest={m}
-                unlocked={unlockedSet.has(m.id) || !m.lockable}
-                unlockedSet={unlockedSet}
-                dependents={dependentModules(m.id, unlockedModules)}
-                currency={currency}
-                busy={busyId === m.id}
-                onUnlock={onUnlock}
-                onLock={onLock}
-              />
+              <motion.div key={m.id} variants={item} className="h-full">
+                <ModuleCard
+                  manifest={m}
+                  unlocked={unlockedSet.has(m.id) || !m.lockable}
+                  unlockedSet={unlockedSet}
+                  dependents={dependentModules(m.id, unlockedModules)}
+                  currency={currency}
+                  busy={busyId === m.id}
+                  onUnlock={onUnlock}
+                  onLock={onLock}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
       ))}
 

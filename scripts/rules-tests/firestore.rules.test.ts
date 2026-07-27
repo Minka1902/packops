@@ -19,7 +19,10 @@ import {
   initializeTestEnvironment, assertFails, assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, setDoc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import {
+  doc, setDoc, updateDoc, deleteDoc, getDoc,
+  collection, getDocs, query, where,
+} from 'firebase/firestore';
 import { beforeAll, afterAll, beforeEach, describe, it } from 'vitest';
 
 const BID = 'biz1';
@@ -65,6 +68,31 @@ beforeEach(async () => {
     await setDoc(doc(db, 'businesses', BID, 'roles', 'owner'), { name: 'Owner', isSystem: true, grants: {}, createdAt: 1, updatedAt: 1 });
     await setDoc(doc(db, 'businesses', BID, 'roles', 'r'), { name: 'Manager', grants: {}, createdAt: 1, updatedAt: 1 });
     await setDoc(doc(db, 'businesses', BID, 'customers', 'c1'), { name: 'Client', createdAt: 1, updatedAt: 1, createdBy: OWNER });
+  });
+});
+
+// The whole business app boots from this query. It is a `list`, so the rule
+// cannot resolve membership through the {bid} wildcard — it must be readable
+// off the document. Regression guard: getDoc passing is not evidence the query
+// works, which is how this broke silently before.
+describe('businesses collection', () => {
+  const myBusinesses = (uid: string) =>
+    query(collection(authed(uid), 'businesses'), where('staffUserIds', 'array-contains', uid));
+
+  it('a member can list the businesses they belong to', async () => {
+    await assertSucceeds(getDocs(myBusinesses(OWNER)));
+    await assertSucceeds(getDocs(myBusinesses(WORKER)));
+  });
+
+  it('an outsider gets nothing and cannot list the collection unfiltered', async () => {
+    await assertSucceeds(getDocs(myBusinesses(OUTSIDER))); // matches no documents
+    await assertFails(getDocs(collection(authed(OUTSIDER), 'businesses')));
+    await assertFails(getDocs(collection(authed(OWNER), 'businesses')));
+  });
+
+  it('a member reads its own business doc; an outsider cannot', async () => {
+    await assertSucceeds(getDoc(doc(authed(WORKER), 'businesses', BID)));
+    await assertFails(getDoc(doc(authed(OUTSIDER), 'businesses', BID)));
   });
 });
 

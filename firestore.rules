@@ -168,9 +168,18 @@ service cloud.firestore {
     }
 
     match /businesses/{bid} {
-      allow read:   if isBizMember(bid);
-      // The business model requires a logo, a registration/business ID and an
-      // exact location (lat/lng) at creation.
+      // `get` and `list` are split on purpose. isBizMember() resolves the staff
+      // doc through the {bid} wildcard, which Firestore cannot evaluate while
+      // matching a query — a combined `allow read` makes every list of
+      // /businesses fail with permission-denied, including the
+      // "businesses I belong to" query the whole CRM boots from.
+      // Membership is already denormalized onto staffUserIds (the field that
+      // query filters on), so the list rule reads it straight off the document.
+      allow get:  if isBizMember(bid);
+      allow list: if request.auth != null
+        && request.auth.uid in resource.data.staffUserIds;
+      // The business model requires a registration/business ID and an exact
+      // location (lat/lng) at creation.
       allow create: if request.auth != null
         && request.resource.data.ownerUserId == request.auth.uid
         && request.resource.data.registrationId is string && request.resource.data.registrationId.size() > 0

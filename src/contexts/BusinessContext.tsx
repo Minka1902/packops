@@ -27,6 +27,8 @@ interface BusinessContextValue {
   unlockedModules: ModuleId[];
   /** Module-scoped read/write/action gate mirroring firestore.rules. */
   perms: EffectivePerms;
+  /** Set when the businesses listener failed (usually a rules denial). */
+  loadError: string | null;
 }
 
 const BusinessContext = createContext<BusinessContextValue | null>(null);
@@ -43,6 +45,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const [activeBusiness, setActiveBusinessState] = useState<Business | null>(null);
   const [myStaff, setMyStaff] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Only open listeners while operating in business mode.
   useEffect(() => {
@@ -53,19 +56,32 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
       return;
     }
     setLoading(true);
+    setLoadError(null);
     const storedId = localStorage.getItem(ACTIVE_BIZ_KEY);
     const unsub = onSnapshot(
       query(businessesCol(), where('staffUserIds', 'array-contains', user.uid)),
       snap => {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Business));
         setBusinesses(list);
+        setLoadError(null);
         setActiveBusinessState(prev => {
           if (prev && list.find(b => b.id === prev.id)) return list.find(b => b.id === prev.id)!;
           return list.find(b => b.id === storedId) ?? list[0] ?? null;
         });
         setLoading(false);
       },
-      () => setLoading(false),
+      // Never swallow this. A rules denial here leaves activeBusiness null,
+      // which every business screen renders as an innocuous "nothing here yet"
+      // — the failure has to be visible or it looks like missing data.
+      err => {
+        console.error('[BusinessContext] businesses listener failed', err);
+        setLoadError(
+          err.code === 'permission-denied'
+            ? 'You do not have permission to load your businesses.'
+            : 'Could not load your businesses.',
+        );
+        setLoading(false);
+      },
     );
     return () => unsub();
   }, [user, mode]);
@@ -130,9 +146,9 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       businesses, activeBusiness, setActiveBusiness, myStaff, isOwner, loading,
-      tenant, unlockedModules, perms,
+      tenant, unlockedModules, perms, loadError,
     }),
-    [businesses, activeBusiness, setActiveBusiness, myStaff, isOwner, loading, tenant, unlockedModules, perms],
+    [businesses, activeBusiness, setActiveBusiness, myStaff, isOwner, loading, tenant, unlockedModules, perms, loadError],
   );
 
   return <BusinessContext.Provider value={value}>{children}</BusinessContext.Provider>;

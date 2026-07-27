@@ -75,7 +75,9 @@ export default function BusinessRegisterPage() {
         address: { street: location.address.trim(), lat: location.lat, lng: location.lng },
         location: { lat: location.lat!, lng: location.lng!, label: location.address.trim() },
       });
-      navigate('/business');
+      // Straight into the Module Store: a brand-new business has nothing but the
+      // core modules, so picking tools is the only useful next step.
+      navigate('/business/store', { state: { firstRun: true } });
     } finally {
       setSubmitting(false);
     }

@@ -1,6 +1,8 @@
 // ─── ModuleCard ───────────────────────────────────────────────────────────────
 
+import { useEffect, useRef, useState } from 'react';
 import { Lock, Unlock, Loader2, Check } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,9 +26,29 @@ export function ModuleCard({
 }) {
   const Icon = manifest.icon;
   const lockBlocked = dependents.length > 0;
+  const reduced = useReducedMotion();
+
+  // Pulse once when this card flips locked → unlocked, so the confirmation is
+  // visible even when the card is far from the button that was pressed (an
+  // "unlock together" closure unlocks several cards at once).
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const wasUnlocked = useRef(unlocked);
+  useEffect(() => {
+    if (unlocked && !wasUnlocked.current) {
+      setJustUnlocked(true);
+      const t = setTimeout(() => setJustUnlocked(false), 600);
+      return () => clearTimeout(t);
+    }
+    wasUnlocked.current = unlocked;
+  }, [unlocked]);
 
   return (
-    <Card className={unlocked ? 'border-primary/30' : undefined}>
+    <motion.div
+      className="h-full"
+      animate={justUnlocked && !reduced ? { scale: [1, 1.03, 1] } : { scale: 1 }}
+      transition={{ duration: 0.45, ease: 'easeOut' }}
+    >
+    <Card className={`h-full transition-colors ${unlocked ? 'border-primary/30' : ''}`}>
       <CardContent className="flex h-full flex-col gap-3 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -76,5 +98,6 @@ export function ModuleCard({
         )}
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
