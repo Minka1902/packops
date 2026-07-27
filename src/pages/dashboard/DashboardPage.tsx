@@ -12,21 +12,21 @@ import FeedingLogChart from '@/components/routine/monitoring/FeedingLogChart';
 import TrainingProgressChart from '@/components/routine/monitoring/TrainingProgressChart';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import GridLayout from 'react-grid-layout';
+import GridLayout, { type Layout } from 'react-grid-layout/legacy';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
 // ── Grid layout persistence ────────────────────────────────────────────────
 const DASH_GRID_KEY = 'packops_dashboard_grid_layout';
 
-const DEFAULT_DASH_LAYOUT: GridLayout.Layout[] = [
+const DEFAULT_DASH_LAYOUT: Layout[] = [
   { i: 'dog', x: 0, y: 0, w: 4, h: 4, minW: 2, minH: 2 },
   { i: 'medical', x: 0, y: 4, w: 4, h: 2, minW: 2, minH: 1 },
   { i: 'timeline', x: 4, y: 0, w: 5, h: 6, minW: 3, minH: 3 },
   { i: 'analytics', x: 9, y: 0, w: 3, h: 6, minW: 2, minH: 3 },
 ];
 
-function loadLayout(): GridLayout.Layout[] {
+function loadLayout(): Layout[] {
   try {
     const saved = localStorage.getItem(DASH_GRID_KEY);
     return saved ? JSON.parse(saved) : DEFAULT_DASH_LAYOUT;
@@ -50,7 +50,7 @@ export default function DashboardPage() {
 
   // Grid editor state
   const [editDashboard, setEditDashboard] = useState(false);
-  const [dashLayout, setDashLayout] = useState<GridLayout.Layout[]>(loadLayout);
+  const [dashLayout, setDashLayout] = useState<Layout[]>(loadLayout);
 
   // Container width measurement for GridLayout
   const gridContainerRef = useRef<HTMLDivElement>(null);

@@ -5,13 +5,19 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist'] },
+  // `.claude` holds agent worktrees — full copies of this repo, tsconfig and all.
+  // Left unignored they are linted twice and their tsconfig confuses the parser's
+  // root-directory detection.
+  { ignores: ['dist', '.claude'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+      // Pin the root explicitly: auto-detection picks up worktree copies of
+      // tsconfig.json and errors out with "multiple candidate TSConfigRootDirs".
+      parserOptions: { tsconfigRootDir: import.meta.dirname },
     },
     plugins: {
       'react-hooks': reactHooks,

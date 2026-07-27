@@ -38,7 +38,7 @@ export default function BusinessRegisterPage() {
   const [error, setError] = useState<string | null>(null);
 
   const hasExactLocation = location.lat !== undefined && location.lng !== undefined && !!location.address.trim();
-  const valid = !!name.trim() && !!registrationId.trim() && !!logoURL && hasExactLocation;
+  const valid = !!name.trim() && !!registrationId.trim() && hasExactLocation;
 
   const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,7 +58,7 @@ export default function BusinessRegisterPage() {
     e.preventDefault();
     setError(null);
     if (!valid) {
-      setError('Logo, business ID and an exact address with a map location are all required.');
+      setError('Business name, business ID, and an exact address with a map location are all required.');
       return;
     }
     setSubmitting(true);
@@ -92,7 +92,7 @@ export default function BusinessRegisterPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Logo (required) */}
+            {/* Logo (optional) */}
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
                 <Avatar className="h-16 w-16 rounded-xl">
@@ -111,7 +111,7 @@ export default function BusinessRegisterPage() {
                 <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFile} />
               </div>
               <div>
-                <p className="text-sm font-medium">Logo <span className="text-destructive">*</span></p>
+                <p className="text-sm font-medium">Logo</p>
                 <p className="text-xs text-muted-foreground">Shown in your public listing.</p>
               </div>
             </div>
