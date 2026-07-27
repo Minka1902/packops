@@ -1,4 +1,4 @@
-import { getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { usersCol } from '@/lib/firestore';
 import type { UserProfile } from '@/types';
 
@@ -22,4 +22,17 @@ export async function lookupUserByEmail(email: string): Promise<LookedUpUser | n
   const d = snap.docs[0];
   const data = d.data() as UserProfile;
   return { uid: d.id, displayName: data.displayName, email: data.email, photoURL: data.photoURL };
+}
+
+/**
+ * Resolve a registered user by uid. Used where an id is already known but the
+ * display details are not — a dog's main human, for example, is stored on the
+ * dog as `mainHumanId` and has no record in the dog's `humans` subcollection.
+ */
+export async function lookupUserById(uid: string): Promise<LookedUpUser | null> {
+  if (!uid) return null;
+  const snap = await getDoc(doc(usersCol(), uid));
+  if (!snap.exists()) return null;
+  const data = snap.data() as UserProfile;
+  return { uid: snap.id, displayName: data.displayName, email: data.email, photoURL: data.photoURL };
 }

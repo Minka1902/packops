@@ -4,7 +4,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Users, UserPlus, Clock, Search, Building2 } from 'lucide-react';
 import { useDog } from '@/contexts/DogContext';
-import { useHumans, usePendingHumans } from '@/hooks/useHumans';
+import { useHumans, usePendingHumans, useDogOwner } from '@/hooks/useHumans';
 import { useBusinessDirectory } from '@/hooks/useDirectory';
 import { useAuth } from '@/hooks/useAuth';
 import { isTeamEligibleBusiness } from '@/types';
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { HUMAN_ROLES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import type { HumanRole, UserProfile } from '@/types';
+import type { DogHuman, HumanRole, UserProfile } from '@/types';
 
 export default function HumansPage() {
   const { activeDog, isMainHuman } = useDog();
@@ -26,6 +26,25 @@ export default function HumansPage() {
   const { humans, loading: humansLoading, revokeHuman, addBusinessToTeam } = useHumans(dogId);
   const { pending, approveHuman, rejectHuman, addHumanDirectly } = usePendingHumans(dogId);
   const isMain = isMainHuman(dogId);
+  const { owner } = useDogOwner(activeDog?.mainHumanId);
+
+  // The owner lives on the dog, not in `humans`, so it is prepended here. Guard
+  // against a stale duplicate row for the same uid, and fall back to a
+  // placeholder name when the profile can't be read (a caregiver may not have
+  // permission to fetch the owner's user document).
+  const ownerId = activeDog?.mainHumanId;
+  const ownerRow: DogHuman | null = ownerId
+    ? {
+        userId: ownerId,
+        displayName: owner?.displayName ?? (ownerId === user?.uid ? (user.displayName ?? 'You') : 'Dog owner'),
+        email: owner?.email ?? '',
+        role: 'caregiver',
+        approvedAt: 0,
+        approvedBy: ownerId,
+      }
+    : null;
+  const teamMembers = humans.filter(h => h.userId !== ownerId);
+  const teamCount = teamMembers.length + (ownerRow ? 1 : 0);
 
   const { results: directory } = useBusinessDirectory(null);
   const [bizSearch, setBizSearch] = useState('');
@@ -231,7 +250,7 @@ export default function HumansPage() {
       {/* Team members */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Team Members {!humansLoading && `(${humans.length})`}
+          Team Members {!humansLoading && `(${teamCount})`}
         </h2>
         {humansLoading ? (
           <div className="space-y-2">
@@ -245,25 +264,37 @@ export default function HumansPage() {
               </div>
             ))}
           </div>
-        ) : humans.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-14 rounded-xl border border-dashed bg-background gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-              <Users className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div className="text-center">
-              <p className="font-medium text-sm">Just you so far</p>
-              <p className="text-sm text-muted-foreground mt-1">Invite caregivers, trainers, or walkers to join <span className="capitalize">{activeDog.name}</span>'s team.</p>
-            </div>
-          </div>
         ) : (
-          humans.map(human => (
-            <HumanCard
-              key={human.userId}
-              human={human}
-              canRevoke={isMain && human.userId !== user?.uid}
-              onRevoke={revokeHuman}
-            />
-          ))
+          <>
+            {ownerRow && (
+              <HumanCard
+                key={ownerRow.userId}
+                human={ownerRow}
+                isOwner
+                isSelf={ownerRow.userId === user?.uid}
+              />
+            )}
+            {teamMembers.map(human => (
+              <HumanCard
+                key={human.userId}
+                human={human}
+                isSelf={human.userId === user?.uid}
+                canRevoke={isMain && human.userId !== user?.uid}
+                onRevoke={revokeHuman}
+              />
+            ))}
+            {teamMembers.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-14 rounded-xl border border-dashed bg-background gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Users className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div className="text-center">
+                  <p className="font-medium text-sm">No one else yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Invite caregivers, trainers, or walkers to join <span className="capitalize">{activeDog.name}</span>'s team.</p>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
