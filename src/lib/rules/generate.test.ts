@@ -49,15 +49,16 @@ describe('rules generator ↔ manifest sync', () => {
 });
 
 describe('firestore.rules drift guard', () => {
-  // Normalise line endings before comparing: git hands Windows checkouts CRLF
-  // while the generator emits LF, which otherwise fails the guard on every
-  // fresh clone even though the content is identical.
-  const lf = (s: string) => s.replace(/\r\n/g, '\n');
+  // Compare the rule text, not its packaging. Two things otherwise break this
+  // guard on a clean checkout: git hands Windows CRLF while the generator emits
+  // LF, and extractGeneratedRules keeps the blank lines that sit between the
+  // markers and the first/last rule. Neither changes what Firestore enforces.
+  const norm = (s: string) => s.replace(/\r/g, '').trim();
 
   it('committed generated block equals generator output (run `npm run gen:rules`)', () => {
     const rules = readFileSync(rulesPath, 'utf8');
     const expected = gen.generateModuleRules(gen.DATA_MODELS, loadSnippets());
-    expect(lf(gen.extractGeneratedRules(rules))).toBe(lf(expected));
+    expect(norm(gen.extractGeneratedRules(rules))).toBe(norm(expected));
   });
 
   it('the v2 rule helpers are present', () => {
