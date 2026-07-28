@@ -84,6 +84,18 @@ export const CAPABILITY_TO_PERM: Record<Capability, PermRef | null> = {
   // breeder litters & waitlist → breeding
   view_breeding:           M('breeding', 'read'),
   manage_breeding:         M('breeding', 'action'),
+  // grooming
+  view_grooming:           M('grooming', 'read'),
+  manage_grooming:         M('grooming', 'action'),
+  // waivers & forms → documents
+  view_waivers:            M('documents', 'read'),
+  manage_waivers:          M('documents', 'action'),
+  // expenses → invoicing: the same money ledger, other direction
+  view_expenses:           M('invoicing', 'read'),
+  manage_expenses:         M('invoicing', 'action'),
+  // payroll → workforce, which already covers rota, leave and pay
+  view_payroll:            M('workforce', 'read'),
+  manage_payroll:          M('workforce', 'action'),
 };
 
 // Legacy capabilities that have no v2 equivalent — preserved verbatim on the
@@ -143,17 +155,21 @@ export const LEGACY_MODULE_TO_ID: Record<BusinessModule, ModuleId> = {
   patients:     'veterinary',
   classes:      'events',
   breeding:     'breeding',
+  grooming:     'grooming',
+  waivers:      'documents',
+  expenses:     'invoicing',
+  payroll:      'workforce',
 };
 
 export const ID_TO_LEGACY_MODULES: Partial<Record<ModuleId, BusinessModule[]>> = {
   clients:      ['customers'],
   appointments: ['appointments'],
-  invoicing:    ['invoices'],
+  invoicing:    ['invoices', 'expenses'],
   inventory:    ['inventory', 'purchasing'],
   deliveries:   ['shipments'],
   shop:         ['orders', 'services'],
   boarding:     ['boarding'],
-  workforce:    ['shifts'],
+  workforce:    ['shifts', 'payroll'],
   analytics:    ['reports'],
   messaging:    ['messages', 'report_cards'],
   memberships:  ['packages'],
@@ -161,6 +177,8 @@ export const ID_TO_LEGACY_MODULES: Partial<Record<ModuleId, BusinessModule[]>> =
   veterinary:   ['patients'],
   events:       ['classes'],
   breeding:     ['breeding'],
+  grooming:     ['grooming'],
+  documents:    ['waivers'],
 };
 
 function withCore(ids: readonly ModuleId[]): ModuleId[] {

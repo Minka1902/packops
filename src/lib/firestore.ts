@@ -52,6 +52,14 @@ export const bizClassesCol      = (bid: string) => collection(db, 'businesses', 
 export const bizEnrollmentsCol  = (bid: string) => collection(db, 'businesses', bid, 'enrollments');
 export const bizLittersCol      = (bid: string) => collection(db, 'businesses', bid, 'litters');
 export const bizWaitlistCol     = (bid: string) => collection(db, 'businesses', bid, 'waitlist');
+export const bizGroomServicesCol = (bid: string) => collection(db, 'businesses', bid, 'groomServices');
+export const bizWaiverTemplatesCol   = (bid: string) => collection(db, 'businesses', bid, 'waiverTemplates');
+export const bizWaiverSubmissionsCol = (bid: string) => collection(db, 'businesses', bid, 'waiverSubmissions');
+export const bizExpensesCol     = (bid: string) => collection(db, 'businesses', bid, 'expenses');
+export const bizPayProfilesCol  = (bid: string) => collection(db, 'businesses', bid, 'payProfiles');
+export const bizTimeEntriesCol  = (bid: string) => collection(db, 'businesses', bid, 'timeEntries');
+export const bizPayRunsCol      = (bid: string) => collection(db, 'businesses', bid, 'payRuns');
+export const bizPayslipsCol     = (bid: string) => collection(db, 'businesses', bid, 'payslips');
 
 // Public subcollections of the directory entry — read by anyone, synced by staff.
 export const directoryCatalogCol    = (bid: string) => collection(db, 'businessDirectory', bid, 'catalog');
@@ -59,3 +67,4 @@ export const directoryAdoptablesCol = (bid: string) => collection(db, 'businessD
 export const directoryClassesCol    = (bid: string) => collection(db, 'businessDirectory', bid, 'classCatalog');
 export const directoryLittersCol    = (bid: string) => collection(db, 'businessDirectory', bid, 'litterCatalog');
 export const directoryReviewsCol    = (bid: string) => collection(db, 'businessDirectory', bid, 'reviews');
+export const directoryWaiversCol    = (bid: string) => collection(db, 'businessDirectory', bid, 'waivers');

@@ -49,10 +49,15 @@ describe('rules generator ↔ manifest sync', () => {
 });
 
 describe('firestore.rules drift guard', () => {
+  // Normalise line endings before comparing: git hands Windows checkouts CRLF
+  // while the generator emits LF, which otherwise fails the guard on every
+  // fresh clone even though the content is identical.
+  const lf = (s: string) => s.replace(/\r\n/g, '\n');
+
   it('committed generated block equals generator output (run `npm run gen:rules`)', () => {
     const rules = readFileSync(rulesPath, 'utf8');
     const expected = gen.generateModuleRules(gen.DATA_MODELS, loadSnippets());
-    expect(gen.extractGeneratedRules(rules)).toBe(expected);
+    expect(lf(gen.extractGeneratedRules(rules))).toBe(lf(expected));
   });
 
   it('the v2 rule helpers are present', () => {

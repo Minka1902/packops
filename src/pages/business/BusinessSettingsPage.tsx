@@ -11,10 +11,14 @@ import BusinessProfileForm, { type BusinessProfileFormData } from '@/components/
 import AvailabilityEditor from '@/components/business/AvailabilityEditor';
 import CommerceSettingsCard from '@/components/business/CommerceSettingsCard';
 import BoardingSettingsCard from '@/components/business/BoardingSettingsCard';
-import { refreshBoardingAvailability, resyncCatalog } from '@/hooks/useBusiness';
+import GroomingSettingsCard from '@/components/business/GroomingSettingsCard';
+import WaiversSettingsCard from '@/components/business/WaiversSettingsCard';
+import ModuleSetupStatusCard from '@/components/business/ModuleSetupStatusCard';
+import { refreshBoardingAvailability, refreshGroomMenu, resyncCatalog, resyncWaivers } from '@/hooks/useBusiness';
 import {
   ALL_MODULES, MODULE_CATALOG, isModuleEnabled,
-  type BoardingSettings, type BusinessModule, type CommerceSettings, type ModuleGroup, type WeeklyAvailability,
+  type BoardingSettings, type BusinessModule, type CommerceSettings, type GroomingSettings,
+  type ModuleGroup, type WaiversSettings, type WeeklyAvailability,
 } from '@/types';
 
 const MODULE_GROUPS: ModuleGroup[] = ['Operations', 'Customer', 'Specialty'];
@@ -90,6 +94,28 @@ export default function BusinessSettingsPage() {
         />
       )}
 
+      {isModuleEnabled(activeBusiness, 'grooming') && (
+        <GroomingSettingsCard
+          business={activeBusiness}
+          onSave={async (grooming: GroomingSettings) => {
+            await updateBusiness({ grooming });
+            // Republish the public groom menu so the booking page is in sync.
+            await refreshGroomMenu(bid).catch(() => undefined);
+          }}
+        />
+      )}
+
+      {isModuleEnabled(activeBusiness, 'waivers') && (
+        <WaiversSettingsCard
+          business={activeBusiness}
+          onSave={async (waivers: WaiversSettings) => {
+            await updateBusiness({ waivers });
+            // Publish or retract the public waiver templates to match the toggle.
+            await resyncWaivers(bid, waivers.published).catch(() => undefined);
+          }}
+        />
+      )}
+
       {isModuleEnabled(activeBusiness, 'appointments') && (
         <Card>
           <CardHeader>
@@ -110,6 +136,8 @@ export default function BusinessSettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <ModuleSetupStatusCard business={activeBusiness} />
 
       <Card>
         <CardHeader>

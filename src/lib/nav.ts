@@ -2,7 +2,8 @@ import {
   Home, Activity, Dumbbell, Stethoscope, Users, Cpu, QrCode, Settings,
   Calendar, Receipt, Package, Truck, Lock, MapPin,
   ShoppingCart, BedDouble, Tags, PackagePlus, CalendarClock, BarChart3, MessageSquare,
-  FileHeart, Ticket, GraduationCap, HeartHandshake, PawPrint,
+  FileHeart, Ticket, GraduationCap, HeartHandshake, PawPrint, Scissors, FileSignature,
+  Wallet, Banknote,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Capability, BusinessModule } from '@/types';
@@ -43,12 +44,14 @@ export interface BusinessNavItem extends NavItem {
 export const BUSINESS_NAV_ITEMS: BusinessNavItem[] = [
   { to: '/business',              label: 'Dashboard',    icon: Home },
   { to: '/business/appointments', label: 'Appointments', icon: Calendar, cap: 'view_appointments', module: 'appointments' },
+  { to: '/business/grooming',     label: 'Grooming',     icon: Scissors, cap: 'view_grooming',     module: 'grooming' },
   { to: '/business/orders',       label: 'Orders',       icon: ShoppingCart, cap: 'view_orders',   module: 'orders' },
   { to: '/business/boarding',     label: 'Boarding',     icon: BedDouble, cap: 'view_boarding',    module: 'boarding' },
   { to: '/business/customers',    label: 'Customers',    icon: Users,    cap: 'view_customers',    module: 'customers' },
   { to: '/business/messages',     label: 'Messages',     icon: MessageSquare, cap: 'view_messages', module: 'messages' },
   { to: '/business/report-cards', label: 'Report cards', icon: FileHeart, cap: 'view_report_cards', module: 'report_cards' },
   { to: '/business/packages',     label: 'Packages',     icon: Ticket,   cap: 'view_packages',     module: 'packages' },
+  { to: '/business/waivers',      label: 'Waivers',      icon: FileSignature, cap: 'view_waivers', module: 'waivers' },
   { to: '/business/patients',     label: 'Patients',     icon: Stethoscope, cap: 'view_patients',  module: 'patients' },
   { to: '/business/classes',      label: 'Classes',      icon: GraduationCap, cap: 'view_classes', module: 'classes' },
   { to: '/business/adoptions',    label: 'Adoptions',    icon: HeartHandshake, cap: 'view_adoptions', module: 'adoptions' },
@@ -59,6 +62,8 @@ export const BUSINESS_NAV_ITEMS: BusinessNavItem[] = [
   { to: '/business/shipments',    label: 'Shipments',    icon: Truck,    cap: 'view_shipments',    module: 'shipments' },
   { to: '/business/purchasing',   label: 'Purchasing',   icon: PackagePlus, cap: 'view_purchasing', module: 'purchasing' },
   { to: '/business/shifts',       label: 'Shifts',       icon: CalendarClock, cap: 'view_shifts',  module: 'shifts' },
+  { to: '/business/payroll',      label: 'Payroll',      icon: Banknote, cap: 'view_payroll',      module: 'payroll' },
+  { to: '/business/expenses',     label: 'Expenses',     icon: Wallet,   cap: 'view_expenses',     module: 'expenses' },
   { to: '/business/reports',      label: 'Reports',      icon: BarChart3, cap: 'view_reports',     module: 'reports' },
   // Staff & Roles now come from the module registry (see BusinessSidebar).
   { to: '/business/security',     label: 'Security',     icon: Lock },

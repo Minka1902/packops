@@ -11,6 +11,7 @@ import { isModuleUnlocked } from '@/modules/permissions';
 import { isCoreModule } from '@/modules/ids';
 import { AlertsStrip } from '@/components/dashboard/AlertsStrip';
 import { SummaryCard } from '@/components/dashboard/SummaryCard';
+import { clientFacingModuleStatuses } from '@/types';
 
 export default function OwnerDashboardPage() {
   const { activeBusiness, unlockedModules, perms, isOwner, loading, loadError } = useBusiness();
@@ -18,6 +19,11 @@ export default function OwnerDashboardPage() {
   const cards = ALL_MANIFESTS.filter(
     (m) => m.summaryView && isModuleUnlocked(m.id, unlockedModules) && perms.has(m.id, 'read'),
   );
+
+  // Carried over from the dashboard this page replaced: client-facing modules
+  // can be enabled but not yet configured, in which case customers still can't
+  // see them. Surfacing that here is the only warning an owner gets.
+  const needsSetup = clientFacingModuleStatuses(activeBusiness).filter((s) => s.needsSetup);
 
   // A business whose unlock set is nothing but the core modules has never been
   // through the store. Send the owner there once — the moment anything is
@@ -59,6 +65,20 @@ export default function OwnerDashboardPage() {
           </Link>
         )}
       </header>
+
+      {isOwner && needsSetup.length > 0 && (
+        <Link
+          to="/business/settings"
+          className="flex items-start gap-3 rounded-xl border border-amber-500/50 bg-amber-50 p-4 text-sm transition-colors hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+        >
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <span>
+            <span className="font-medium">Finish setup to go live.</span>{' '}
+            {needsSetup.map((s) => s.label).join(', ')} {needsSetup.length === 1 ? 'is' : 'are'} enabled
+            but not yet available to customers. Configure in Settings.
+          </span>
+        </Link>
+      )}
 
       <AlertsStrip />
 
