@@ -40,6 +40,8 @@ const MedicalPage               = lazy(() => import('@/pages/medical/MedicalPage
 const HumansPage                = lazy(() => import('@/pages/humans/HumansPage'));
 const DiscoverPage              = lazy(() => import('@/pages/discover/DiscoverPage'));
 const BusinessBookingPage       = lazy(() => import('@/pages/discover/BusinessBookingPage'));
+const BusinessGroomingPage      = lazy(() => import('@/pages/discover/BusinessGroomingPage'));
+const BusinessWaiversPage       = lazy(() => import('@/pages/discover/BusinessWaiversPage'));
 const BusinessOrderPage         = lazy(() => import('@/pages/discover/BusinessOrderPage'));
 const BusinessStayRequestPage   = lazy(() => import('@/pages/discover/BusinessStayRequestPage'));
 const DevicesPage               = lazy(() => import('@/pages/devices/DevicesPage'));
@@ -57,8 +59,12 @@ const InventoryPage         = lazy(() => import('@/pages/business/InventoryPage'
 const OrdersPage            = lazy(() => import('@/pages/business/OrdersPage'));
 const BoardingPage          = lazy(() => import('@/pages/business/BoardingPage'));
 const ServicesPage          = lazy(() => import('@/pages/business/ServicesPage'));
+const GroomingPage          = lazy(() => import('@/pages/business/GroomingPage'));
+const WaiversPage           = lazy(() => import('@/pages/business/WaiversPage'));
 const PurchasingPage        = lazy(() => import('@/pages/business/PurchasingPage'));
 const ShiftsPage            = lazy(() => import('@/pages/business/ShiftsPage'));
+const PayrollPage           = lazy(() => import('@/pages/business/PayrollPage'));
+const ExpensesPage          = lazy(() => import('@/pages/business/ExpensesPage'));
 const ReportsPage           = lazy(() => import('@/pages/business/ReportsPage'));
 const MessagesPage          = lazy(() => import('@/pages/business/MessagesPage'));
 const ReportCardsPage       = lazy(() => import('@/pages/business/ReportCardsPage'));
@@ -125,6 +131,8 @@ export const router = createBrowserRouter([
               { path: '/discover/:bid',        element: <BusinessBookingPage /> },
               { path: '/discover/:bid/order',  element: <BusinessOrderPage /> },
               { path: '/discover/:bid/boarding', element: <BusinessStayRequestPage /> },
+              { path: '/discover/:bid/grooming', element: <BusinessGroomingPage /> },
+              { path: '/discover/:bid/waivers', element: <BusinessWaiversPage /> },
               { path: '/discover/:bid/classes', element: <BusinessClassesPage /> },
               { path: '/discover/:bid/adopt',  element: <BusinessAdoptPage /> },
               { path: '/discover/:bid/litters', element: <BusinessLittersPage /> },
@@ -157,8 +165,12 @@ export const router = createBrowserRouter([
               { path: '/business/orders',      element: <OrdersPage /> },
               { path: '/business/boarding',    element: <BoardingPage /> },
               { path: '/business/services',    element: <ServicesPage /> },
+              { path: '/business/grooming',    element: <GroomingPage /> },
+              { path: '/business/waivers',     element: <WaiversPage /> },
               { path: '/business/purchasing',  element: <PurchasingPage /> },
               { path: '/business/shifts',      element: <ShiftsPage /> },
+              { path: '/business/payroll',     element: <PayrollPage /> },
+              { path: '/business/expenses',    element: <ExpensesPage /> },
               { path: '/business/reports',     element: <ReportsPage /> },
               { path: '/business/messages',    element: <MessagesPage /> },
               { path: '/business/report-cards', element: <ReportCardsPage /> },

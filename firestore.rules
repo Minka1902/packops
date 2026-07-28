@@ -107,6 +107,17 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/businessDirectory/$(bid)) &&
         ('boarding' in directoryEntry(bid)) && directoryEntry(bid).boarding.requestsOpen == true;
     }
+    // Customer grooming bookings are only accepted once the owner turns grooming
+    // online-booking on (projected into the public directory entry).
+    function acceptsGrooming(bid) {
+      return exists(/databases/$(database)/documents/businessDirectory/$(bid)) &&
+        ('grooming' in directoryEntry(bid)) && directoryEntry(bid).grooming.bookingOpen == true;
+    }
+    // Clients may only submit waivers once the owner has published the forms.
+    function waiversPublished(bid) {
+      return exists(/databases/$(database)/documents/businessDirectory/$(bid)) &&
+        ('waivers' in directoryEntry(bid)) && directoryEntry(bid).waivers.published == true;
+    }
 
     // Public, read-by-anyone business directory ("businesses near me"). Owners /
     // managers publish the denormalized projection; private business data stays
@@ -155,6 +166,12 @@ service cloud.firestore {
       match /litterCatalog/{id} {
         allow read:  if true;
         allow write: if hasCap(bid, 'manage_breeding') || hasCap(bid, 'manage_business');
+      }
+
+      // Public waiver/form templates (active + published) clients complete.
+      match /waivers/{id} {
+        allow read:  if true;
+        allow write: if hasCap(bid, 'manage_waivers') || hasCap(bid, 'manage_business');
       }
 
       // Reviews: one per user (doc id == reviewer uid), author-only writes.
@@ -245,12 +262,14 @@ service cloud.firestore {
         allow read: if hasCap(bid, 'view_appointments') || hasCap(bid, 'manage_appointments') ||
           (request.auth != null && resource.data.customerUserId == request.auth.uid);
         // Staff create, or a customer self-booking a constrained "scheduled" request.
+        // Grooming bookings additionally require the grooming module to be live.
         allow create: if hasCap(bid, 'manage_appointments') ||
           (request.auth != null
             && isBookable(bid)
             && request.resource.data.source == 'customer'
             && request.resource.data.customerUserId == request.auth.uid
-            && request.resource.data.status == 'scheduled');
+            && request.resource.data.status == 'scheduled'
+            && (!('kind' in request.resource.data) || request.resource.data.kind != 'grooming' || acceptsGrooming(bid)));
         allow delete: if hasCap(bid, 'manage_appointments');
         // Staff update; an assigned worker with manage_own_appointments; or the
         // customer changing only the status of their own booking (e.g. cancel).
@@ -354,6 +373,64 @@ service cloud.firestore {
       match /purchaseOrders/{id} {
         allow read:  if hasCap(bid, 'view_purchasing') || hasCap(bid, 'manage_purchasing');
         allow write: if hasCap(bid, 'manage_purchasing');
+      }
+
+      // ─── Expenses & bookkeeping ─────────────────────────────────────────────
+      // Staff record costs; only the owner approves them (the money sign-off).
+      match /expenses/{id} {
+        allow read:   if hasCap(bid, 'view_expenses') || hasCap(bid, 'manage_expenses');
+        // Owner may post an approved expense (e.g. a paid pay run); staff record
+        // pending ones only.
+        allow create: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_expenses') && request.resource.data.status == 'pending');
+        allow delete: if hasCap(bid, 'manage_expenses');
+        // Managers edit fields but can't change approval status — only the owner
+        // flips 'pending' ⇄ 'approved'.
+        allow update: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_expenses') && request.resource.data.status == resource.data.status);
+      }
+
+      // ─── Payroll & timesheets ───────────────────────────────────────────────
+      // Pay rates are sensitive: only payroll staff (and the member themselves)
+      // may read them; managers set them.
+      match /payProfiles/{uid} {
+        allow read:  if hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll') ||
+          (isBizMember(bid) && uid == request.auth.uid);
+        allow write: if hasCap(bid, 'manage_payroll');
+      }
+
+      match /timeEntries/{id} {
+        allow read: if isBizMember(bid) || hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll');
+        // Members log their own pending hours; managers log for anyone.
+        allow create: if (hasCap(bid, 'manage_payroll') && request.resource.data.status == 'pending') ||
+          (isBizMember(bid) && request.resource.data.staffUserId == request.auth.uid
+            && request.resource.data.status == 'pending');
+        // Only the owner approves (status flip); managers/own author edit pending.
+        allow update: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_payroll') && request.resource.data.status == resource.data.status) ||
+          (isBizMember(bid) && resource.data.staffUserId == request.auth.uid
+            && resource.data.status == 'pending' && request.resource.data.status == 'pending');
+        allow delete: if hasCap(bid, 'manage_payroll') ||
+          (isBizMember(bid) && resource.data.staffUserId == request.auth.uid
+            && resource.data.status == 'pending');
+      }
+
+      match /payRuns/{id} {
+        allow read:   if hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll');
+        allow create: if hasCap(bid, 'manage_payroll') && request.resource.data.status == 'draft';
+        allow delete: if hasCap(bid, 'manage_payroll') && resource.data.status == 'draft';
+        // Managers prepare/recompute drafts; only the owner approves or pays.
+        allow update: if isBizOwner(bid) ||
+          (hasCap(bid, 'manage_payroll')
+            && request.resource.data.status == 'draft' && resource.data.status == 'draft');
+      }
+
+      // Per-staff payslip projection: a member reads their own; payroll staff
+      // read all. Written by the owner (approve/pay) or payroll managers.
+      match /payslips/{id} {
+        allow read:  if hasCap(bid, 'view_payroll') || hasCap(bid, 'manage_payroll') ||
+          (isBizMember(bid) && resource.data.staffUserId == request.auth.uid);
+        allow write: if isBizOwner(bid) || hasCap(bid, 'manage_payroll');
       }
 
       match /threads/{tid} {
@@ -467,6 +544,29 @@ service cloud.firestore {
             && request.resource.data.customerUserId == request.auth.uid
             && request.resource.data.status == 'waiting');
         allow update, delete: if hasCap(bid, 'manage_breeding');
+      }
+
+      match /groomServices/{id} {
+        // The grooming menu is harmless internally — any member may read it.
+        allow read:  if isBizMember(bid) || hasCap(bid, 'view_grooming');
+        allow write: if hasCap(bid, 'manage_grooming');
+      }
+
+      match /waiverTemplates/{id} {
+        allow read:  if isBizMember(bid) || hasCap(bid, 'view_waivers');
+        allow write: if hasCap(bid, 'manage_waivers');
+      }
+
+      match /waiverSubmissions/{id} {
+        allow read: if hasCap(bid, 'view_waivers') || hasCap(bid, 'manage_waivers') ||
+          (request.auth != null && resource.data.customerUserId == request.auth.uid);
+        // Staff record completions; a client submits their own once forms are published.
+        allow create: if hasCap(bid, 'manage_waivers') ||
+          (request.auth != null
+            && waiversPublished(bid)
+            && request.resource.data.customerUserId == request.auth.uid
+            && request.resource.data.status == 'submitted');
+        allow update, delete: if hasCap(bid, 'manage_waivers');
       }
     }
 
