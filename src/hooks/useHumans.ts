@@ -3,6 +3,7 @@ import { onSnapshot, setDoc, doc, writeBatch, deleteDoc, arrayUnion, arrayRemove
 import { db } from '@/lib/firebase';
 import { humansCol, pendingCol } from '@/lib/firestore';
 import { useAuth } from '@/hooks/useAuth';
+import { lookupUserById, type LookedUpUser } from '@/lib/userLookup';
 import { stripUndefined } from '@/lib/utils';
 import type { DogHuman, PendingHuman, HumanRole, BusinessType } from '@/types';
 
@@ -52,6 +53,31 @@ export function useHumans(dogId: string) {
   };
 
   return { humans, loading, revokeHuman, addBusinessToTeam };
+}
+
+/**
+ * The dog's owner (its main human). Deliberately not a document in the dog's
+ * `humans` subcollection — ownership lives on the dog as `mainHumanId` — so the
+ * team list has to resolve the profile separately or the owner is invisible.
+ * Returns null while loading or if the profile can't be read.
+ */
+export function useDogOwner(mainHumanId: string | undefined) {
+  // Keyed by the id it was fetched for, so switching dogs is handled by
+  // deriving "is this result still current?" rather than clearing state inside
+  // the effect (which would cascade an extra render on every dog change).
+  const [fetched, setFetched] = useState<{ id: string; owner: LookedUpUser | null } | null>(null);
+
+  useEffect(() => {
+    if (!mainHumanId) return;
+    let cancelled = false;
+    lookupUserById(mainHumanId)
+      .then(owner => { if (!cancelled) setFetched({ id: mainHumanId, owner }); })
+      .catch(() => { if (!cancelled) setFetched({ id: mainHumanId, owner: null }); });
+    return () => { cancelled = true; };
+  }, [mainHumanId]);
+
+  const current = fetched && fetched.id === mainHumanId ? fetched : null;
+  return { owner: current?.owner ?? null, loading: !!mainHumanId && !current };
 }
 
 export function usePendingHumans(dogId: string) {
