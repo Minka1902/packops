@@ -114,9 +114,11 @@ export default function TrackingMap({
     <MapContainer
       center={handlerPos ?? [51.505, -0.09]}
       zoom={handlerPos ? 17 : 13}
-      style={{ width: '100%', height: '100%' }}
+      // MapContainer has no `cursor` prop — it was being dropped, so
+      // add-target mode never showed a crosshair. Set it on the container's
+      // own style instead.
+      style={{ width: '100%', height: '100%', cursor: addTargetMode ? 'crosshair' : undefined }}
       zoomControl={false}
-      cursor={addTargetMode ? 'crosshair' : undefined}
     >
       <LayersControl position="topright">
         <LayersControl.BaseLayer name="Satellite" checked>

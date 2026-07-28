@@ -19,14 +19,11 @@ it('renders status badge when provided', () => {
   expect(screen.getByText('Scheduled')).toBeInTheDocument();
 });
 
-it('calls onDelete when delete button is clicked', () => {
-  const onDelete = vi.fn();
-  render(<TimelineBlock {...base} kind="standalone-log" onDelete={onDelete} />);
-  fireEvent.click(screen.getByLabelText('Delete'));
-  expect(onDelete).toHaveBeenCalledTimes(1);
-});
-
-it('does not render delete button when onDelete is not provided', () => {
-  render(<TimelineBlock {...base} kind="standalone-log" />);
-  expect(screen.queryByLabelText('Delete')).toBeNull();
+// Deleting a log moved out of the block and into LogDetailSheet, which the
+// block opens by calling onClick — there is no inline delete button any more.
+it('calls onClick when the block is clicked', () => {
+  const onClick = vi.fn();
+  render(<TimelineBlock {...base} kind="standalone-log" onClick={onClick} />);
+  fireEvent.click(screen.getByText('Walk'));
+  expect(onClick).toHaveBeenCalledTimes(1);
 });

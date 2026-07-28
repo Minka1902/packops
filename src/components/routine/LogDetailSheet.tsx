@@ -51,8 +51,18 @@ const STATUS_STYLES: Record<string, { bg: string; fg: string; label: string }> =
 export default function LogDetailSheet({ selection, onClose }: Props) {
   const open = selection !== null;
 
-  const handleDelete = () => { selection?.onDelete?.(); onClose(); };
-  const handleConfirm = () => { selection?.onConfirm?.(); onClose(); };
+  // `onDelete` and `onConfirm` each exist on only some members of the
+  // LogSelection union (a medical event can't be deleted here, a routine log
+  // can't be confirmed), so narrow by kind rather than reaching through the
+  // union.
+  const handleDelete = () => {
+    if (selection && selection.kind !== 'medical') selection.onDelete?.();
+    onClose();
+  };
+  const handleConfirm = () => {
+    if (selection && selection.kind !== 'log') selection.onConfirm?.();
+    onClose();
+  };
 
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) onClose(); }}>

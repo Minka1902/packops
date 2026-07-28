@@ -34,6 +34,13 @@ export const TRAINING_TYPES: { type: TrainingType; label: string }[] = [
   { type: 'other',                 label: 'Other' },
 ];
 
+// Training types worth running a GPS-tracked session for — the ones the dog
+// covers ground during. TrackingSessionPage offers only these; indoor work
+// (crate conditioning, cooperative care, treadmill…) produces no useful track.
+export const TRACKING_TRAINING_TYPES: TrainingType[] = [
+  'tracking', 'scent_work', 'search', 'retrieve', 'recall', 'heel', 'agility', 'bite',
+];
+
 export const HUMAN_ROLES: { role: HumanRole; label: string }[] = [
   { role: 'caregiver', label: 'Caregiver' },
   { role: 'trainer',   label: 'Trainer' },

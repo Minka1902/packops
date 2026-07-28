@@ -14,32 +14,42 @@ vi.mock('react-router-dom', async (importOriginal) => {
 });
 
 import LoginForm from '@/components/auth/LoginForm';
+import { SessionModeProvider } from '@/contexts/SessionModeContext';
 
 beforeEach(() => { vi.clearAllMocks(); });
 
+// LoginForm reads the personal/business toggle from SessionModeContext, so it
+// needs the provider as well as a router.
+const renderForm = () =>
+  render(
+    <MemoryRouter>
+      <SessionModeProvider><LoginForm /></SessionModeProvider>
+    </MemoryRouter>,
+  );
+
 test('submits email and password to login', async () => {
   mockLogin.mockResolvedValue(undefined);
-  render(<MemoryRouter><LoginForm /></MemoryRouter>);
+  renderForm();
   await userEvent.type(screen.getByLabelText(/email/i), 'a@b.com');
-  await userEvent.type(screen.getByLabelText(/password/i), 'secret');
+  await userEvent.type(screen.getByLabelText(/^password$/i), 'secret');
   await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
   expect(mockLogin).toHaveBeenCalledWith('a@b.com', 'secret');
 });
 
 test('shows error message when login fails', async () => {
   mockLogin.mockRejectedValue({ code: 'auth/wrong-password' });
-  render(<MemoryRouter><LoginForm /></MemoryRouter>);
+  renderForm();
   await userEvent.type(screen.getByLabelText(/email/i), 'a@b.com');
-  await userEvent.type(screen.getByLabelText(/password/i), 'wrong');
+  await userEvent.type(screen.getByLabelText(/^password$/i), 'wrong');
   await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
   expect(await screen.findByText(/incorrect password/i)).toBeInTheDocument();
 });
 
 test('disables submit button while submitting', async () => {
   mockLogin.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-  render(<MemoryRouter><LoginForm /></MemoryRouter>);
+  renderForm();
   await userEvent.type(screen.getByLabelText(/email/i), 'a@b.com');
-  await userEvent.type(screen.getByLabelText(/password/i), 'pw');
+  await userEvent.type(screen.getByLabelText(/^password$/i), 'pw');
   await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
   expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled();
 });

@@ -110,8 +110,14 @@ export default function BusinessBookingPage() {
 
   return (
     <div className="mx-auto max-w-xl space-y-5 p-1 sm:p-2">
-      <Button asChild variant="ghost" size="sm" className="gap-1.5 -ml-2">
-        <Link to="/discover"><ArrowLeft className="h-4 w-4" /> Discover</Link>
+      <Button
+        render={<Link to="/discover" />}
+        nativeButton={false}
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 -ml-2"
+      >
+        <ArrowLeft className="h-4 w-4" /> Discover
       </Button>
 
       <div>
@@ -253,7 +259,9 @@ export default function BusinessBookingPage() {
                 {entry.name} will confirm your appointment. You'll see it once they accept.
               </p>
             </div>
-            <Button asChild variant="outline" size="sm"><Link to="/discover">Back to discover</Link></Button>
+            <Button render={<Link to="/discover" />} nativeButton={false} variant="outline" size="sm">
+              Back to discover
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -268,7 +276,9 @@ export default function BusinessBookingPage() {
               <div className="space-y-1.5">
                 <Label>Service <span className="text-destructive">*</span></Label>
                 {services.length > 0 ? (
-                  <Select value={service} onValueChange={setService}>
+                  // Base UI's Select can emit null when cleared; the form
+                  // treats "no service" as the empty string.
+                  <Select value={service} onValueChange={v => setService(v ?? '')}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Choose a service" /></SelectTrigger>
                     <SelectContent>
                       {services.map(s => {

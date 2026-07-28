@@ -14,6 +14,16 @@ vi.mock('firebase/auth', () => ({
   updateProfile: vi.fn(),
 }));
 
+// src/lib/firebase.ts calls getStorage(app) at module load. Without this mock
+// the real SDK rejects the stubbed app object, and every test that transitively
+// imports the module fails to load at all rather than failing an assertion.
+vi.mock('firebase/storage', () => ({
+  getStorage: vi.fn(() => ({})),
+  ref: vi.fn(() => ({})),
+  uploadBytes: vi.fn(async () => ({ ref: {} })),
+  getDownloadURL: vi.fn(async () => 'https://example.test/upload.png'),
+}));
+
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
   collection: vi.fn(),

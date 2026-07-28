@@ -62,12 +62,23 @@ export default function BusinessDiscoverCard({ biz }: { biz: DirectoryResult }) 
 
       <div className="mt-4 flex items-center gap-2">
         {biz.bookable ? (
-          <Button asChild size="sm" className="gap-1.5">
-            <Link to={`/discover/${biz.id}`}><CalendarPlus className="h-3.5 w-3.5" /> Book</Link>
+          <Button
+            render={<Link to={`/discover/${biz.id}`} />}
+            nativeButton={false}
+            size="sm"
+            className="gap-1.5"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" /> Book
           </Button>
         ) : (
-          <Button asChild size="sm" variant="outline" className="gap-1.5">
-            <Link to={`/discover/${biz.id}`}>View <ChevronRight className="h-3.5 w-3.5" /></Link>
+          <Button
+            render={<Link to={`/discover/${biz.id}`} />}
+            nativeButton={false}
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+          >
+            View <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>

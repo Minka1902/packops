@@ -421,12 +421,14 @@ export function useInvoices(bid: string) {
   ) => {
     const now = Date.now();
     const { subtotal, total } = computeInvoiceTotals(data.lineItems, data.taxRate);
+    // Firestore assigns the id, so the document written is an Invoice minus
+    // `id` — asserting the full type here was a lie the compiler caught.
     return addDoc(bizInvoicesCol(bid), stripUndefined({
       ...data,
       number: data.number ?? `INV-${now}`,
       subtotal, total, amountPaid: 0, payments: [],
       createdBy: user!.uid, createdAt: now, updatedAt: now,
-    } as Invoice));
+    } satisfies Omit<Invoice, 'id'>));
   };
   const updateInvoice = async (id: string, data: Partial<Invoice>) => {
     const patch: Partial<Invoice> = { ...data, updatedAt: Date.now() };
