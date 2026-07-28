@@ -24,7 +24,7 @@ export default function TrainingSessionDetailPage() {
 
   if (!activeDog) return <Navigate to="/training" replace />;
   if (loading) return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="w-full max-w-2xl mx-auto space-y-4">
       <div className="flex items-center gap-3"><Skeleton className="h-8 flex-1" /><Skeleton className="h-6 w-24 rounded-full" /></div>
       <div className="rounded-xl border bg-card p-5 space-y-3"><Skeleton className="h-5 w-32" /><Skeleton className="h-10 w-20" /><Skeleton className="h-16 w-full" /></div>
       <div className="rounded-xl border bg-card p-5 space-y-3"><Skeleton className="h-5 w-28" />{[1,2,3].map(i=><Skeleton key={i} className="h-4 w-full" />)}</div>
@@ -70,7 +70,7 @@ export default function TrainingSessionDetailPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 pb-[88px]">
+    <div className="w-full max-w-2xl mx-auto space-y-4 pb-[88px]">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold flex-1">{typeLabel}</h1>
         <Badge variant="outline">{fmtDate(session.scheduledAt)}</Badge>

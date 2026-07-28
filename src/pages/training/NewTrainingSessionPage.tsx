@@ -27,7 +27,7 @@ export default function NewTrainingSessionPage() {
   if (!activeDog) return <div className="text-muted-foreground">No active dog selected.</div>;
 
   return (
-    <div className="max-w-xl mx-auto space-y-5">
+    <div className="w-full max-w-xl mx-auto space-y-5">
       {/* Page header */}
       <div
         className="relative overflow-hidden rounded-2xl px-5 pt-5 pb-4"

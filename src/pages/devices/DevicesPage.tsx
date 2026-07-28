@@ -21,7 +21,7 @@ export default function DevicesPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto lg:flex-1 lg:overflow-y-auto lg:p-4">
+    <div className="w-full space-y-5 max-w-3xl mx-auto lg:flex-1 lg:overflow-y-auto lg:p-4">
       <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Devices</h1>
         <Button size="sm" onClick={() => setShowForm(true)} className="gap-1.5">

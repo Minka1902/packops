@@ -13,7 +13,7 @@ export default function SecurityPage() {
   const refresh = () => forceRefresh(n => n + 1);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="w-full max-w-2xl mx-auto space-y-6">
       <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Security</h1>
 
       <Card>

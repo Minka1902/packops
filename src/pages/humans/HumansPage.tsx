@@ -112,7 +112,7 @@ export default function HumansPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 lg:flex-1 lg:overflow-y-auto lg:p-4">
+    <div className="w-full max-w-2xl mx-auto space-y-6 lg:flex-1 lg:overflow-y-auto lg:p-4">
       <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Team</h1>
         <Link to="/dogs/join" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>

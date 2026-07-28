@@ -78,7 +78,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-5 lg:flex-1 lg:overflow-y-auto lg:p-4">
+    <div className="w-full max-w-xl mx-auto space-y-5 lg:flex-1 lg:overflow-y-auto lg:p-4">
       {/* Header */}
       <div className="px-1 pt-1">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-heading)' }}>
