@@ -1,0 +1,17 @@
+import DogProfileForm from '@/features/dog/components/DogProfileForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+
+export default function CreateDogPage() {
+  return (
+    <div className="w-full max-w-2xl mx-auto pb-[88px] sm:pb-4 lg:flex-1 lg:overflow-y-auto lg:p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Add a Dog</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DogProfileForm />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -13,6 +13,9 @@ dist-ssr
 *.local
 .claude/*
 .superpowers/
+.playwright-mcp/
+test-results/
+playwright-report/
 scripts/service-account.json
 
 # Editor directories and files

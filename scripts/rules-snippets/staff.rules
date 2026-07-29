@@ -1,0 +1,19 @@
+      // staff — module 'staff' (custom: self-edit anti-escalation + owner guard)
+      match /staff/{userId} {
+        allow read:   if isBizMember(bid);
+        allow create: if can(bid, 'staff', 'action') || hasCap(bid, 'manage_staff');
+        // Editing needs staff write (or legacy manage_staff). A user editing
+        // their OWN record may not change perms / role / overrides / capabilities
+        // / active (prevents self-escalation & self-deactivation). The owner's
+        // staff record can never be deactivated.
+        allow update: if (can(bid, 'staff', 'write') || hasCap(bid, 'manage_staff'))
+          && (request.auth.uid != userId
+              || (request.resource.data.get('perms', []) == resource.data.get('perms', [])
+                  && request.resource.data.roleId == resource.data.roleId
+                  && request.resource.data.get('overrides', {}) == resource.data.get('overrides', {})
+                  && request.resource.data.capabilities == resource.data.capabilities
+                  && request.resource.data.active == resource.data.active))
+          && !(resource.data.roleId == 'owner' && request.resource.data.active != resource.data.active);
+        allow delete: if (can(bid, 'staff', 'action') || hasCap(bid, 'manage_staff'))
+          && resource.data.roleId != 'owner';
+      }

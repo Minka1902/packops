@@ -11,6 +11,16 @@ export default defineConfig({
   },
   projects: [
     {
+      // Ultrawide / 4K-scaled desktops, where fixed max-width columns leave the
+      // screen mostly empty if a layout doesn't opt into extra columns.
+      name: 'wide',
+      use: { viewport: { width: 2560, height: 1440 } },
+    },
+    {
+      name: 'large',
+      use: { viewport: { width: 1920, height: 1080 } },
+    },
+    {
       name: 'desktop',
       use: { viewport: { width: 1440, height: 900 } },
     },

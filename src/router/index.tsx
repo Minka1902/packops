@@ -1,73 +1,63 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
-import ProtectedRoute from '@/components/layout/ProtectedRoute';
-import RequireMode from '@/components/layout/RequireMode';
-import AppShell from '@/components/layout/AppShell';
-import BusinessAppShell from '@/components/layout/BusinessAppShell';
+import { createBrowserRouter, type RouteObject } from 'react-router-dom';
+import ProtectedRoute from '@/shared/layout/ProtectedRoute';
+import RequireMode from '@/shared/layout/RequireMode';
+import AppShell from '@/shared/layout/AppShell';
+import BusinessAppShell from '@/shared/layout/BusinessAppShell';
+import { ALL_MANIFESTS } from '@/modules/registry';
+import { ModuleGate } from '@/modules/react';
+
+// Every module's routes, each mounted under a ModuleGate that enforces unlock +
+// read at runtime (locked/denied modules render an in-place notice). Registered
+// statically for all modules so navigation doesn't churn as modules unlock.
+function moduleRouteGroups(): RouteObject[] {
+  return ALL_MANIFESTS
+    .filter((m) => m.routes?.length)
+    .map((m) => ({
+      element: <ModuleGate moduleId={m.id} />,
+      children: (m.routes ?? []).map((r) => ({ path: `/business/${r.path}`, lazy: r.lazy })),
+    }));
+}
 
 // Auth + public pages — kept eager (needed before any JS chunk arrives)
-import LoginPage    from '@/pages/auth/LoginPage';
-import RegisterPage from '@/pages/auth/RegisterPage';
-import PublicQRPage from '@/pages/qr/PublicQRPage';
+import LoginPage    from '@/features/auth/pages/LoginPage';
+import RegisterPage from '@/features/auth/pages/RegisterPage';
+import PublicQRPage from '@/features/qr/pages/PublicQRPage';
 
 // All other pages lazy-loaded: downloaded only when first visited
-const ActiveWalkPage            = lazy(() => import('@/pages/walk/ActiveWalkPage'));
-const WalkSummaryPage           = lazy(() => import('@/pages/walk/WalkSummaryPage'));
-const ActiveTrainingPage        = lazy(() => import('@/pages/training/ActiveTrainingPage'));
-const DashboardPage             = lazy(() => import('@/pages/dashboard/DashboardPage'));
-const CreateDogPage             = lazy(() => import('@/pages/dog/CreateDogPage'));
-const EditDogPage               = lazy(() => import('@/pages/dog/EditDogPage'));
-const JoinDogPage               = lazy(() => import('@/pages/dog/JoinDogPage'));
-const RoutinePage               = lazy(() => import('@/pages/routine/RoutinePage'));
-const TrainingPage              = lazy(() => import('@/pages/training/TrainingPage'));
-const NewTrainingSessionPage    = lazy(() => import('@/pages/training/NewTrainingSessionPage'));
-const TrainingSessionDetailPage = lazy(() => import('@/pages/training/TrainingSessionDetailPage'));
-const MedicalPage               = lazy(() => import('@/pages/medical/MedicalPage'));
-const HumansPage                = lazy(() => import('@/pages/humans/HumansPage'));
-const DiscoverPage              = lazy(() => import('@/pages/discover/DiscoverPage'));
-const BusinessBookingPage       = lazy(() => import('@/pages/discover/BusinessBookingPage'));
-const BusinessGroomingPage      = lazy(() => import('@/pages/discover/BusinessGroomingPage'));
-const BusinessWaiversPage       = lazy(() => import('@/pages/discover/BusinessWaiversPage'));
-const BusinessOrderPage         = lazy(() => import('@/pages/discover/BusinessOrderPage'));
-const BusinessStayRequestPage   = lazy(() => import('@/pages/discover/BusinessStayRequestPage'));
-const DevicesPage               = lazy(() => import('@/pages/devices/DevicesPage'));
-const QRPage                    = lazy(() => import('@/pages/qr/QRPage'));
-const SettingsPage              = lazy(() => import('@/pages/settings/SettingsPage'));
+const ActiveWalkPage            = lazy(() => import('@/features/walk/pages/ActiveWalkPage'));
+const WalkSummaryPage           = lazy(() => import('@/features/walk/pages/WalkSummaryPage'));
+const ActiveTrainingPage        = lazy(() => import('@/features/training/pages/ActiveTrainingPage'));
+const DashboardPage             = lazy(() => import('@/features/dashboard/pages/DashboardPage'));
+const CreateDogPage             = lazy(() => import('@/features/dog/pages/CreateDogPage'));
+const EditDogPage               = lazy(() => import('@/features/dog/pages/EditDogPage'));
+const JoinDogPage               = lazy(() => import('@/features/dog/pages/JoinDogPage'));
+const RoutinePage               = lazy(() => import('@/features/routine/pages/RoutinePage'));
+const TrainingPage              = lazy(() => import('@/features/training/pages/TrainingPage'));
+const NewTrainingSessionPage    = lazy(() => import('@/features/training/pages/NewTrainingSessionPage'));
+const TrainingSessionDetailPage = lazy(() => import('@/features/training/pages/TrainingSessionDetailPage'));
+const MedicalPage               = lazy(() => import('@/features/medical/pages/MedicalPage'));
+const HumansPage                = lazy(() => import('@/features/team/pages/HumansPage'));
+const DiscoverPage              = lazy(() => import('@/features/discover/pages/DiscoverPage'));
+const BusinessBookingPage       = lazy(() => import('@/features/discover/pages/BusinessBookingPage'));
+const BusinessGroomingPage      = lazy(() => import('@/features/discover/pages/BusinessGroomingPage'));
+const BusinessWaiversPage       = lazy(() => import('@/features/discover/pages/BusinessWaiversPage'));
+const BusinessOrderPage         = lazy(() => import('@/features/discover/pages/BusinessOrderPage'));
+const BusinessStayRequestPage   = lazy(() => import('@/features/discover/pages/BusinessStayRequestPage'));
+const DevicesPage               = lazy(() => import('@/features/devices/pages/DevicesPage'));
+const QRPage                    = lazy(() => import('@/features/qr/pages/QRPage'));
+const SettingsPage              = lazy(() => import('@/features/settings/pages/SettingsPage'));
 
 // Business CRM pages
-const BusinessRegisterPage  = lazy(() => import('@/pages/business/BusinessRegisterPage'));
-const BusinessDashboardPage = lazy(() => import('@/pages/business/BusinessDashboardPage'));
-const CustomersPage         = lazy(() => import('@/pages/business/CustomersPage'));
-const AppointmentsPage      = lazy(() => import('@/pages/business/AppointmentsPage'));
-const InvoicesPage          = lazy(() => import('@/pages/business/InvoicesPage'));
-const InventoryPage         = lazy(() => import('@/pages/business/InventoryPage'));
-const OrdersPage            = lazy(() => import('@/pages/business/OrdersPage'));
-const BoardingPage          = lazy(() => import('@/pages/business/BoardingPage'));
-const ServicesPage          = lazy(() => import('@/pages/business/ServicesPage'));
-const GroomingPage          = lazy(() => import('@/pages/business/GroomingPage'));
-const WaiversPage           = lazy(() => import('@/pages/business/WaiversPage'));
-const PurchasingPage        = lazy(() => import('@/pages/business/PurchasingPage'));
-const ShiftsPage            = lazy(() => import('@/pages/business/ShiftsPage'));
-const PayrollPage           = lazy(() => import('@/pages/business/PayrollPage'));
-const ExpensesPage          = lazy(() => import('@/pages/business/ExpensesPage'));
-const ReportsPage           = lazy(() => import('@/pages/business/ReportsPage'));
-const MessagesPage          = lazy(() => import('@/pages/business/MessagesPage'));
-const ReportCardsPage       = lazy(() => import('@/pages/business/ReportCardsPage'));
-const PackagesPage          = lazy(() => import('@/pages/business/PackagesPage'));
-const PatientsPage          = lazy(() => import('@/pages/business/PatientsPage'));
-const PatientChartPage      = lazy(() => import('@/pages/business/PatientChartPage'));
-const ClassesPage           = lazy(() => import('@/pages/business/ClassesPage'));
-const BusinessClassesPage   = lazy(() => import('@/pages/discover/BusinessClassesPage'));
-const AdoptionsPage         = lazy(() => import('@/pages/business/AdoptionsPage'));
-const BusinessAdoptPage     = lazy(() => import('@/pages/discover/BusinessAdoptPage'));
-const BreedingPage          = lazy(() => import('@/pages/business/BreedingPage'));
-const BusinessLittersPage   = lazy(() => import('@/pages/discover/BusinessLittersPage'));
-const MyMessagesPage        = lazy(() => import('@/pages/messages/MyMessagesPage'));
-const ShipmentsPage         = lazy(() => import('@/pages/business/ShipmentsPage'));
-const StaffPage             = lazy(() => import('@/pages/business/StaffPage'));
-const RolesPage             = lazy(() => import('@/pages/business/RolesPage'));
-const SecurityPage          = lazy(() => import('@/pages/business/SecurityPage'));
-const BusinessSettingsPage  = lazy(() => import('@/pages/business/BusinessSettingsPage'));
+const BusinessRegisterPage  = lazy(() => import('@/features/business/pages/BusinessRegisterPage'));
+const OwnerDashboardPage    = lazy(() => import('@/features/business/pages/OwnerDashboardPage'));
+const ModuleStorePage       = lazy(() => import('@/features/business/pages/ModuleStorePage'));
+const BusinessClassesPage   = lazy(() => import('@/features/discover/pages/BusinessClassesPage'));
+const BusinessAdoptPage     = lazy(() => import('@/features/discover/pages/BusinessAdoptPage'));
+const BusinessLittersPage   = lazy(() => import('@/features/discover/pages/BusinessLittersPage'));
+const MyMessagesPage        = lazy(() => import('@/features/messages/pages/MyMessagesPage'));
+const SecurityPage          = lazy(() => import('@/features/business/pages/SecurityPage'));
+const BusinessSettingsPage  = lazy(() => import('@/features/business/pages/BusinessSettingsPage'));
 
 function PageLoader() {
   return (
@@ -142,35 +132,13 @@ export const router = createBrowserRouter([
               </Suspense>
             ),
             children: [
-              { path: '/business',              element: <BusinessDashboardPage /> },
+              { path: '/business',              element: <OwnerDashboardPage /> },
+              { path: '/business/store',        element: <ModuleStorePage /> },
               { path: '/business/new',          element: <BusinessRegisterPage /> },
-              { path: '/business/customers',    element: <CustomersPage /> },
-              { path: '/business/appointments', element: <AppointmentsPage /> },
-              { path: '/business/invoices',     element: <InvoicesPage /> },
-              { path: '/business/inventory',    element: <InventoryPage /> },
-              { path: '/business/orders',      element: <OrdersPage /> },
-              { path: '/business/boarding',    element: <BoardingPage /> },
-              { path: '/business/services',    element: <ServicesPage /> },
-              { path: '/business/grooming',    element: <GroomingPage /> },
-              { path: '/business/waivers',     element: <WaiversPage /> },
-              { path: '/business/purchasing',  element: <PurchasingPage /> },
-              { path: '/business/shifts',      element: <ShiftsPage /> },
-              { path: '/business/payroll',     element: <PayrollPage /> },
-              { path: '/business/expenses',    element: <ExpensesPage /> },
-              { path: '/business/reports',     element: <ReportsPage /> },
-              { path: '/business/messages',    element: <MessagesPage /> },
-              { path: '/business/report-cards', element: <ReportCardsPage /> },
-              { path: '/business/packages',    element: <PackagesPage /> },
-              { path: '/business/patients',    element: <PatientsPage /> },
-              { path: '/business/patients/:petId', element: <PatientChartPage /> },
-              { path: '/business/classes',     element: <ClassesPage /> },
-              { path: '/business/adoptions',   element: <AdoptionsPage /> },
-              { path: '/business/breeding',    element: <BreedingPage /> },
-              { path: '/business/shipments',    element: <ShipmentsPage /> },
-              { path: '/business/staff',        element: <StaffPage /> },
-              { path: '/business/roles',        element: <RolesPage /> },
               { path: '/business/security',     element: <SecurityPage /> },
               { path: '/business/settings',     element: <BusinessSettingsPage /> },
+              // Module-provided routes (staff, roles, …) gated by ModuleGate.
+              ...moduleRouteGroups(),
             ],
           },
         ],

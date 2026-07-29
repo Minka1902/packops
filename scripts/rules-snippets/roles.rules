@@ -1,0 +1,10 @@
+      // roles — module 'roles' (custom: member-read + immutable system role)
+      match /roles/{roleId} {
+        allow read:   if isBizMember(bid);
+        allow create: if can(bid, 'roles', 'write') || hasCap(bid, 'manage_roles');
+        // The system 'owner' role is read-only.
+        allow update: if (can(bid, 'roles', 'write') || hasCap(bid, 'manage_roles'))
+          && resource.data.get('isSystem', false) != true;
+        allow delete: if (can(bid, 'roles', 'action') || hasCap(bid, 'manage_roles'))
+          && resource.data.get('isSystem', false) != true;
+      }

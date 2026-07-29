@@ -92,6 +92,66 @@ const ALL_CAPS = [
 
 const slug = (s: string) => s.toLowerCase().replace(/[.\s]+/g, '.');
 
+// ─── v2 module/permission mapping ──────────────────────────────────────────────
+// Inlined mirror of src/modules/legacy.ts (this admin-SDK script can't import the
+// ESM app source). The app's drift/unit tests own the canonical mapping; this
+// only needs to produce a realistic v2 fixture. Keep in sync if the app changes.
+const CORE_MODULES = ['staff', 'roles'];
+const LEGACY_MODULE_TO_ID: Record<string, string> = {
+  customers: 'clients', appointments: 'appointments', invoices: 'invoicing',
+  inventory: 'inventory', shipments: 'deliveries', orders: 'shop', boarding: 'boarding',
+  services: 'shop', shifts: 'workforce', purchasing: 'inventory', reports: 'analytics',
+  messages: 'messaging', report_cards: 'messaging', packages: 'memberships',
+  adoptions: 'rescue', patients: 'veterinary', classes: 'events', breeding: 'breeding',
+};
+const CAP_TO_PERM: Record<string, { m: string; l: 'read' | 'write' | 'action' } | null> = {
+  manage_staff: { m: 'staff', l: 'action' }, manage_roles: { m: 'roles', l: 'action' },
+  manage_business: null, view_business: null, manage_own_appointments: null,
+  view_customers: { m: 'clients', l: 'read' }, manage_customers: { m: 'clients', l: 'action' },
+  view_appointments: { m: 'appointments', l: 'read' }, manage_appointments: { m: 'appointments', l: 'action' },
+  view_invoices: { m: 'invoicing', l: 'read' }, manage_invoices: { m: 'invoicing', l: 'action' },
+  record_payments: { m: 'invoicing', l: 'write' },
+  view_inventory: { m: 'inventory', l: 'read' }, manage_inventory: { m: 'inventory', l: 'action' },
+  view_shipments: { m: 'deliveries', l: 'read' }, manage_shipments: { m: 'deliveries', l: 'action' },
+  view_orders: { m: 'shop', l: 'read' }, manage_orders: { m: 'shop', l: 'action' },
+  view_boarding: { m: 'boarding', l: 'read' }, manage_boarding: { m: 'boarding', l: 'action' },
+  view_services: { m: 'shop', l: 'read' }, manage_services: { m: 'shop', l: 'action' },
+  view_shifts: { m: 'workforce', l: 'read' }, manage_shifts: { m: 'workforce', l: 'action' },
+  view_purchasing: { m: 'inventory', l: 'read' }, manage_purchasing: { m: 'inventory', l: 'action' },
+  view_reports: { m: 'analytics', l: 'read' },
+  view_messages: { m: 'messaging', l: 'read' }, manage_messages: { m: 'messaging', l: 'action' },
+  view_report_cards: { m: 'messaging', l: 'read' }, manage_report_cards: { m: 'messaging', l: 'write' },
+  view_packages: { m: 'memberships', l: 'read' }, manage_packages: { m: 'memberships', l: 'action' },
+  view_adoptions: { m: 'rescue', l: 'read' }, manage_adoptions: { m: 'rescue', l: 'action' },
+  view_patients: { m: 'veterinary', l: 'read' }, manage_patients: { m: 'veterinary', l: 'action' },
+  view_classes: { m: 'events', l: 'read' }, manage_classes: { m: 'events', l: 'action' },
+  view_breeding: { m: 'breeding', l: 'read' }, manage_breeding: { m: 'breeding', l: 'action' },
+};
+const LEVELS = ['read', 'write', 'action'] as const;
+const expand = (l: 'read' | 'write' | 'action') => LEVELS.slice(0, LEVELS.indexOf(l) + 1);
+function grantsFromCaps(caps: string[]): Record<string, string[]> {
+  const g: Record<string, string[]> = {};
+  for (const c of caps) {
+    const ref = CAP_TO_PERM[c];
+    if (!ref) continue;
+    const cur = new Set([...(g[ref.m] ?? []), ...expand(ref.l)]);
+    g[ref.m] = LEVELS.filter(l => cur.has(l));
+  }
+  return g;
+}
+function permsFromCaps(caps: string[]): string[] {
+  const g = grantsFromCaps(caps);
+  return Object.entries(g).flatMap(([m, ls]) => ls.map(l => `${m}.${l}`));
+}
+function unlockedFromModules(modules: string[] | undefined): string[] {
+  const ids = new Set(CORE_MODULES);
+  for (const m of modules ?? Object.keys(LEGACY_MODULE_TO_ID)) {
+    const id = LEGACY_MODULE_TO_ID[m];
+    if (id) ids.add(id);
+  }
+  return [...ids];
+}
+
 // ─── Seed: Businesses (CRM) ────────────────────────────────────────────────────
 
 interface SeedBusiness {
@@ -243,7 +303,8 @@ async function seedBusinesses(): Promise<void> {
       registrationId: `IL-${biz.id.slice(0, 4).toUpperCase()}-${1000 + businesses.indexOf(biz)}`,
       logoURL: '', currency: 'ILS', ownerUserId: MINKA_UID, staffUserIds: [MINKA_UID, ...staffUids],
       requireMfa: false, listed: true, bookable: biz.bookable,
-      modules: biz.modules, services: biz.services, location: biz.location,
+      modules: biz.modules, unlockedModules: unlockedFromModules(biz.modules),
+      services: biz.services, location: biz.location,
       availability: weekHours, slotMinutes,
       ...(biz.commerce ? { commerce: biz.commerce } : {}),
       ...(biz.boarding ? { boarding: biz.boarding } : {}),
@@ -268,26 +329,29 @@ async function seedBusinesses(): Promise<void> {
       updatedAt: now,
     });
 
-    // Roles — system owner role + custom roles.
+    // Roles — system owner role + custom roles (v2 grants + legacy caps mirror).
     await ab.set(db.collection('businesses').doc(biz.id).collection('roles').doc('owner'), {
-      name: 'Owner', capabilities: ALL_CAPS, isSystem: true, createdAt: now, updatedAt: now,
+      name: 'Owner', capabilities: ALL_CAPS, grants: grantsFromCaps(ALL_CAPS),
+      isSystem: true, createdAt: now, updatedAt: now,
     });
     for (const role of biz.roles) {
       await ab.set(db.collection('businesses').doc(biz.id).collection('roles').doc(role.id), {
-        name: role.name, capabilities: role.capabilities, createdAt: now, updatedAt: now,
+        name: role.name, capabilities: role.capabilities, grants: grantsFromCaps(role.capabilities),
+        createdAt: now, updatedAt: now,
       });
     }
 
-    // Staff — owner record + workers (capabilities denormalized from their role).
+    // Staff — owner record + workers (v2 perms snapshot + legacy caps mirror).
     await ab.set(db.collection('businesses').doc(biz.id).collection('staff').doc(MINKA_UID), {
       userId: MINKA_UID, displayName: MINKA_NAME, email: MINKA_EMAIL, roleId: 'owner',
-      capabilities: ALL_CAPS, active: true, joinedAt: now, invitedBy: MINKA_UID,
+      capabilities: ALL_CAPS, perms: [], permsSyncedAt: now, active: true, joinedAt: now, invitedBy: MINKA_UID,
     });
     biz.staff.forEach((s, i) => {
       const role = biz.roles.find(r => r.id === s.roleName)!;
       void ab.set(db.collection('businesses').doc(biz.id).collection('staff').doc(staffUids[i]), {
         userId: staffUids[i], displayName: s.name, email: `${slug(s.name)}@${biz.domain}`,
-        roleId: role.id, capabilities: role.capabilities, active: true, joinedAt: now, invitedBy: MINKA_UID,
+        roleId: role.id, capabilities: role.capabilities, perms: permsFromCaps(role.capabilities),
+        permsSyncedAt: now, active: true, joinedAt: now, invitedBy: MINKA_UID,
       });
     });
 
