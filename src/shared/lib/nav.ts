@@ -1,12 +1,14 @@
+// ─── Personal-app navigation ──────────────────────────────────────────────────
+// The business CRM's navigation is deliberately not here: every business page
+// belongs to a module and declares its own nav entry in
+// src/modules/businessPages.ts, so the business sidebar builds itself from the
+// unlocked module set instead of from a parallel hand-maintained list.
+
 import {
-  Home, Activity, Dumbbell, Stethoscope, Users, Cpu, QrCode, Settings,
-  Calendar, Receipt, Package, Truck, Lock, MapPin,
-  ShoppingCart, BedDouble, Tags, PackagePlus, CalendarClock, BarChart3, MessageSquare,
-  FileHeart, Ticket, GraduationCap, HeartHandshake, PawPrint, Scissors, FileSignature,
-  Wallet, Banknote,
+  Home, Activity, Dumbbell, Stethoscope, Users, Cpu, QrCode, Settings, MapPin,
+  MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { Capability, BusinessModule } from '@/shared/types';
 
 export interface NavItem {
   to: string;
@@ -31,41 +33,3 @@ export const NAV_ITEMS: NavItem[] = [
 export const SIDEBAR_NAV = NAV_ITEMS.filter(n => n.to !== '/settings');
 
 export const DEFAULT_MOBILE_NAV = ['/', '/routine', '/training', '/medical', '/settings'];
-
-// ─── Business CRM navigation ──────────────────────────────────────────────────
-// `cap` (when present) gates visibility behind a capability the worker must hold.
-// `module` (when present) hides the item when the owner has disabled that module.
-
-export interface BusinessNavItem extends NavItem {
-  cap?: Capability;
-  module?: BusinessModule;
-}
-
-export const BUSINESS_NAV_ITEMS: BusinessNavItem[] = [
-  { to: '/business',              label: 'Dashboard',    icon: Home },
-  { to: '/business/appointments', label: 'Appointments', icon: Calendar, cap: 'view_appointments', module: 'appointments' },
-  { to: '/business/grooming',     label: 'Grooming',     icon: Scissors, cap: 'view_grooming',     module: 'grooming' },
-  { to: '/business/orders',       label: 'Orders',       icon: ShoppingCart, cap: 'view_orders',   module: 'orders' },
-  { to: '/business/boarding',     label: 'Boarding',     icon: BedDouble, cap: 'view_boarding',    module: 'boarding' },
-  { to: '/business/customers',    label: 'Customers',    icon: Users,    cap: 'view_customers',    module: 'customers' },
-  { to: '/business/messages',     label: 'Messages',     icon: MessageSquare, cap: 'view_messages', module: 'messages' },
-  { to: '/business/report-cards', label: 'Report cards', icon: FileHeart, cap: 'view_report_cards', module: 'report_cards' },
-  { to: '/business/packages',     label: 'Packages',     icon: Ticket,   cap: 'view_packages',     module: 'packages' },
-  { to: '/business/waivers',      label: 'Waivers',      icon: FileSignature, cap: 'view_waivers', module: 'waivers' },
-  { to: '/business/patients',     label: 'Patients',     icon: Stethoscope, cap: 'view_patients',  module: 'patients' },
-  { to: '/business/classes',      label: 'Classes',      icon: GraduationCap, cap: 'view_classes', module: 'classes' },
-  { to: '/business/adoptions',    label: 'Adoptions',    icon: HeartHandshake, cap: 'view_adoptions', module: 'adoptions' },
-  { to: '/business/breeding',     label: 'Litters',      icon: PawPrint, cap: 'view_breeding',     module: 'breeding' },
-  { to: '/business/invoices',     label: 'Invoices',     icon: Receipt,  cap: 'view_invoices',     module: 'invoices' },
-  { to: '/business/services',     label: 'Services',     icon: Tags,     cap: 'view_services',     module: 'services' },
-  { to: '/business/inventory',    label: 'Stock',        icon: Package,  cap: 'view_inventory',    module: 'inventory' },
-  { to: '/business/shipments',    label: 'Shipments',    icon: Truck,    cap: 'view_shipments',    module: 'shipments' },
-  { to: '/business/purchasing',   label: 'Purchasing',   icon: PackagePlus, cap: 'view_purchasing', module: 'purchasing' },
-  { to: '/business/shifts',       label: 'Shifts',       icon: CalendarClock, cap: 'view_shifts',  module: 'shifts' },
-  { to: '/business/payroll',      label: 'Payroll',      icon: Banknote, cap: 'view_payroll',      module: 'payroll' },
-  { to: '/business/expenses',     label: 'Expenses',     icon: Wallet,   cap: 'view_expenses',     module: 'expenses' },
-  { to: '/business/reports',      label: 'Reports',      icon: BarChart3, cap: 'view_reports',     module: 'reports' },
-  // Staff & Roles now come from the module registry (see BusinessSidebar).
-  { to: '/business/security',     label: 'Security',     icon: Lock },
-  { to: '/business/settings',     label: 'Settings',     icon: Settings },
-];

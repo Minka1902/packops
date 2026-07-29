@@ -17,6 +17,7 @@ import {
 import { staffManifest } from './staff/manifest';
 import { rolesManifest } from './roles/manifest';
 import { STUB_MANIFESTS } from './stubs';
+import { BUSINESS_MODULE_PAGES } from './businessPages';
 
 // Full manifests (implemented modules). Stubs cover the rest.
 const FULL_MANIFESTS: ModuleManifest[] = [staffManifest, rolesManifest];
@@ -24,6 +25,18 @@ const FULL_MANIFESTS: ModuleManifest[] = [staffManifest, rolesManifest];
 export const MODULE_REGISTRY: Record<ModuleId, ModuleManifest> = (() => {
   const map = {} as Record<ModuleId, ModuleManifest>;
   for (const m of [...FULL_MANIFESTS, ...STUB_MANIFESTS]) map[m.id] = m;
+  // Business CRM pages are declared once in businessPages.ts and folded onto
+  // their module here, so nav and routing derive from the module id rather than
+  // from a parallel list keyed by the legacy BusinessModule union.
+  for (const [id, pages] of Object.entries(BUSINESS_MODULE_PAGES)) {
+    const manifest = map[id as ModuleId];
+    if (!manifest) continue;
+    map[id as ModuleId] = {
+      ...manifest,
+      navItems: [...(manifest.navItems ?? []), ...(pages.navItems ?? [])],
+      routes: [...(manifest.routes ?? []), ...(pages.routes ?? [])],
+    };
+  }
   return map;
 })();
 

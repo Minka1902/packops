@@ -52,33 +52,10 @@ const SettingsPage              = lazy(() => import('@/features/settings/pages/S
 const BusinessRegisterPage  = lazy(() => import('@/features/business/pages/BusinessRegisterPage'));
 const OwnerDashboardPage    = lazy(() => import('@/features/business/pages/OwnerDashboardPage'));
 const ModuleStorePage       = lazy(() => import('@/features/business/pages/ModuleStorePage'));
-const CustomersPage         = lazy(() => import('@/features/business/pages/CustomersPage'));
-const AppointmentsPage      = lazy(() => import('@/features/business/pages/AppointmentsPage'));
-const InvoicesPage          = lazy(() => import('@/features/business/pages/InvoicesPage'));
-const InventoryPage         = lazy(() => import('@/features/business/pages/InventoryPage'));
-const OrdersPage            = lazy(() => import('@/features/business/pages/OrdersPage'));
-const BoardingPage          = lazy(() => import('@/features/business/pages/BoardingPage'));
-const ServicesPage          = lazy(() => import('@/features/business/pages/ServicesPage'));
-const GroomingPage          = lazy(() => import('@/features/business/pages/GroomingPage'));
-const WaiversPage           = lazy(() => import('@/features/business/pages/WaiversPage'));
-const PurchasingPage        = lazy(() => import('@/features/business/pages/PurchasingPage'));
-const ShiftsPage            = lazy(() => import('@/features/business/pages/ShiftsPage'));
-const PayrollPage           = lazy(() => import('@/features/business/pages/PayrollPage'));
-const ExpensesPage          = lazy(() => import('@/features/business/pages/ExpensesPage'));
-const ReportsPage           = lazy(() => import('@/features/business/pages/ReportsPage'));
-const MessagesPage          = lazy(() => import('@/features/business/pages/MessagesPage'));
-const ReportCardsPage       = lazy(() => import('@/features/business/pages/ReportCardsPage'));
-const PackagesPage          = lazy(() => import('@/features/business/pages/PackagesPage'));
-const PatientsPage          = lazy(() => import('@/features/business/pages/PatientsPage'));
-const PatientChartPage      = lazy(() => import('@/features/business/pages/PatientChartPage'));
-const ClassesPage           = lazy(() => import('@/features/business/pages/ClassesPage'));
 const BusinessClassesPage   = lazy(() => import('@/features/discover/pages/BusinessClassesPage'));
-const AdoptionsPage         = lazy(() => import('@/features/business/pages/AdoptionsPage'));
 const BusinessAdoptPage     = lazy(() => import('@/features/discover/pages/BusinessAdoptPage'));
-const BreedingPage          = lazy(() => import('@/features/business/pages/BreedingPage'));
 const BusinessLittersPage   = lazy(() => import('@/features/discover/pages/BusinessLittersPage'));
 const MyMessagesPage        = lazy(() => import('@/features/messages/pages/MyMessagesPage'));
-const ShipmentsPage         = lazy(() => import('@/features/business/pages/ShipmentsPage'));
 const SecurityPage          = lazy(() => import('@/features/business/pages/SecurityPage'));
 const BusinessSettingsPage  = lazy(() => import('@/features/business/pages/BusinessSettingsPage'));
 
@@ -158,29 +135,6 @@ export const router = createBrowserRouter([
               { path: '/business',              element: <OwnerDashboardPage /> },
               { path: '/business/store',        element: <ModuleStorePage /> },
               { path: '/business/new',          element: <BusinessRegisterPage /> },
-              { path: '/business/customers',    element: <CustomersPage /> },
-              { path: '/business/appointments', element: <AppointmentsPage /> },
-              { path: '/business/invoices',     element: <InvoicesPage /> },
-              { path: '/business/inventory',    element: <InventoryPage /> },
-              { path: '/business/orders',      element: <OrdersPage /> },
-              { path: '/business/boarding',    element: <BoardingPage /> },
-              { path: '/business/services',    element: <ServicesPage /> },
-              { path: '/business/grooming',    element: <GroomingPage /> },
-              { path: '/business/waivers',     element: <WaiversPage /> },
-              { path: '/business/purchasing',  element: <PurchasingPage /> },
-              { path: '/business/shifts',      element: <ShiftsPage /> },
-              { path: '/business/payroll',     element: <PayrollPage /> },
-              { path: '/business/expenses',    element: <ExpensesPage /> },
-              { path: '/business/reports',     element: <ReportsPage /> },
-              { path: '/business/messages',    element: <MessagesPage /> },
-              { path: '/business/report-cards', element: <ReportCardsPage /> },
-              { path: '/business/packages',    element: <PackagesPage /> },
-              { path: '/business/patients',    element: <PatientsPage /> },
-              { path: '/business/patients/:petId', element: <PatientChartPage /> },
-              { path: '/business/classes',     element: <ClassesPage /> },
-              { path: '/business/adoptions',   element: <AdoptionsPage /> },
-              { path: '/business/breeding',    element: <BreedingPage /> },
-              { path: '/business/shipments',    element: <ShipmentsPage /> },
               { path: '/business/security',     element: <SecurityPage /> },
               { path: '/business/settings',     element: <BusinessSettingsPage /> },
               // Module-provided routes (staff, roles, …) gated by ModuleGate.

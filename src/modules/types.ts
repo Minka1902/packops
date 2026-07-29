@@ -95,6 +95,8 @@ export type StubManifestInput = Pick<
   ModuleManifest,
   'id' | 'name' | 'description' | 'category' | 'priceCents' | 'dependencies'
 > &
-  Partial<Pick<ModuleManifest, 'icon' | 'lockable' | 'isDefaultUnlocked' | 'clientFacing' | 'permissions'>> & {
+  Partial<Pick<ModuleManifest,
+    'icon' | 'lockable' | 'isDefaultUnlocked' | 'clientFacing' | 'permissions' | 'navItems' | 'routes'
+  >> & {
     icon: LucideIcon;
   };

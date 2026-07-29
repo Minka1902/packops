@@ -1,35 +1,28 @@
 import { NavLink } from 'react-router-dom';
-import { Briefcase, Store } from 'lucide-react';
+import { Briefcase, Home, Lock, Settings, Store } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useBusiness } from '@/shared/contexts/BusinessContext';
-import { usePermissions } from '@/shared/hooks/usePermissions';
-import { BUSINESS_NAV_ITEMS } from '@/shared/lib/nav';
 import { moduleNavItems } from '@/modules/registry';
-import { isModuleEnabled } from '@/shared/types';
-
-const SETTINGS_ROUTES = ['/business/security', '/business/settings'];
 
 export function BusinessSidebarContent({ onClose }: { onClose?: () => void }) {
   const { activeBusiness, perms, unlockedModules, isOwner } = useBusiness();
-  const { can } = usePermissions();
 
-  // Legacy (not-yet-migrated) items, gated by capability + enabled module.
-  const legacy = BUSINESS_NAV_ITEMS.filter(item =>
-    (!item.cap || can(item.cap)) &&
-    (!item.module || isModuleEnabled(activeBusiness, item.module)),
-  );
-  const topLegacy = legacy.filter(i => !SETTINGS_ROUTES.includes(i.to));
-  const bottomLegacy = legacy.filter(i => SETTINGS_ROUTES.includes(i.to));
-
-  // Migrated-module items (staff, roles, …), gated by the viewer's perms.
+  // Every page in the business app now comes from a module manifest: unlocked
+  // modules contribute their nav items, filtered by the viewer's permissions.
   const moduleItems = moduleNavItems(unlockedModules)
     .filter(n => perms.has(n.moduleId, n.level ?? 'read'))
     .map(n => ({ to: n.to, label: n.label, icon: n.icon as LucideIcon }));
 
+  // Screens that belong to the business itself rather than to any module.
+  const home = [{ to: '/business', label: 'Dashboard', icon: Home as LucideIcon }];
   const storeItem = isOwner ? [{ to: '/business/store', label: 'Module Store', icon: Store as LucideIcon }] : [];
+  const settings = [
+    { to: '/business/security', label: 'Security', icon: Lock as LucideIcon },
+    { to: '/business/settings', label: 'Settings', icon: Settings as LucideIcon },
+  ];
 
-  const items = [...topLegacy, ...moduleItems, ...storeItem, ...bottomLegacy];
+  const items = [...home, ...moduleItems, ...storeItem, ...settings];
 
   return (
     <div className="flex flex-col h-full" style={{ backgroundColor: 'var(--sidebar)', color: 'var(--sidebar-foreground)' }}>
