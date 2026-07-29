@@ -4,13 +4,13 @@
 // firebase/firestore (never path builders), per the modules boundary.
 
 import { arrayUnion, arrayRemove, orderBy, type QueryConstraint } from 'firebase/firestore';
-import { lookupUserByEmail } from '@/lib/userLookup';
-import { useTenantCollection } from '@/lib/tenant/useTenantCollection';
-import type { TenantDb } from '@/lib/tenant/tenantDb';
+import { lookupUserByEmail } from '@/shared/lib/userLookup';
+import { useTenantCollection } from '@/shared/lib/tenant/useTenantCollection';
+import type { TenantDb } from '@/shared/lib/tenant/tenantDb';
 import { computePermTokens, type Grants, type EffectivePerms } from '../permissions';
 import { capabilitiesFromGrants } from '../legacy';
 import { assertPermission } from '../guards';
-import type { Capability } from '@/types';
+import type { Capability } from '@/shared/types';
 import type { TenantRole } from '../roles/types';
 import type { StaffMember, StaffCertification } from './types';
 

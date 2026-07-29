@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ALL_CAPABILITIES, ALL_MODULES, type Capability } from '@/types';
+import { ALL_CAPABILITIES, ALL_MODULES, type Capability } from '@/shared/types';
 import { ALL_MODULE_IDS, isModuleId, isPermissionLevel } from './ids';
 import {
   CAPABILITY_TO_PERM, UNMAPPED_CAPABILITIES,

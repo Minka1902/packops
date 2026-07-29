@@ -5,12 +5,12 @@
 // — never path builders (those come from TenantDb), per the modules boundary.
 
 import { getDocs, query, where, orderBy, type QueryConstraint } from 'firebase/firestore';
-import { useTenantCollection } from '@/lib/tenant/useTenantCollection';
-import type { TenantDb } from '@/lib/tenant/tenantDb';
+import { useTenantCollection } from '@/shared/lib/tenant/useTenantCollection';
+import type { TenantDb } from '@/shared/lib/tenant/tenantDb';
 import { computePermTokens, type Grants, type EffectivePerms } from '../permissions';
 import { capabilitiesFromGrants, UNMAPPED_CAPABILITIES } from '../legacy';
 import { assertPermission } from '../guards';
-import type { Capability } from '@/types';
+import type { Capability } from '@/shared/types';
 import type { TenantRole } from './types';
 import type { StaffMember } from '../staff/types';
 

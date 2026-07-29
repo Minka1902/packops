@@ -11,7 +11,7 @@
 import {
   ALL_CAPABILITIES, ALL_MODULES,
   type BusinessModule, type Capability,
-} from '@/types';
+} from '@/shared/types';
 import {
   CORE_MODULE_IDS, expandLevels,
   type ModuleId, type PermissionLevel,

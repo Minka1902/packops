@@ -29,15 +29,15 @@ export default tseslint.config(
     },
   },
   // Module boundary: src/modules/** may only reach tenant data through TenantDb /
-  // useTenant — never raw Firestore path builders, @/lib/firestore, or the legacy
+  // useTenant — never raw Firestore path builders, @/shared/lib/firestore, or the legacy
   // useBusiness monolith. Query operators (query/where/getDocs/…) stay allowed.
   {
     files: ['src/modules/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
         paths: [
-          { name: '@/lib/firestore', message: 'Modules must use TenantDb (col/doc), not raw collection builders.' },
-          { name: '@/hooks/useBusiness', message: 'Modules must use useTenant() from BusinessContext, not the legacy monolith.' },
+          { name: '@/shared/lib/firestore', message: 'Modules must use TenantDb (col/doc), not raw collection builders.' },
+          { name: '@/features/business/hooks/useBusiness', message: 'Modules must use useTenant() from BusinessContext, not the legacy monolith.' },
           {
             name: 'firebase/firestore',
             importNames: ['collection', 'doc', 'collectionGroup'],

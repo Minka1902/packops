@@ -7,7 +7,7 @@
 // screens; grouped by category.
 
 import { useMemo } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { ALL_MANIFESTS } from '../registry';
 import { MODULE_CATEGORIES } from '../types';
 import { isModuleUnlocked, levelsFor, strongestLevel, type Grants } from '../permissions';

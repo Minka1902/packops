@@ -1,0 +1,25 @@
+import { useParams, Navigate } from 'react-router-dom';
+import { useDog } from '@/shared/contexts/DogContext';
+import DogProfileForm from '@/features/dog/components/DogProfileForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+
+export default function EditDogPage() {
+  const { dogId } = useParams<{ dogId: string }>();
+  const { dogs } = useDog();
+  const dog = dogs.find(d => d.id === dogId);
+
+  if (!dog) return <Navigate to="/" replace />;
+
+  return (
+    <div className="w-full max-w-2xl mx-auto pb-[88px] sm:pb-4 lg:flex-1 lg:overflow-y-auto lg:p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Edit <span className="capitalize">{dog.name}</span></CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DogProfileForm dogId={dog.id} initial={dog} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

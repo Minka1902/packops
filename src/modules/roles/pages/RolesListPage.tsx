@@ -3,16 +3,16 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, ShieldCheck, Users, Pencil, Trash2, RefreshCw, Loader2 } from 'lucide-react';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button, buttonVariants } from '@/shared/ui/button';
+import { Card, CardContent } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/badge';
+import { Skeleton } from '@/shared/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useTenant } from '@/contexts/BusinessContext';
-import { useTenantCollection } from '@/lib/tenant/useTenantCollection';
+} from '@/shared/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
+import { useTenant } from '@/shared/contexts/BusinessContext';
+import { useTenantCollection } from '@/shared/lib/tenant/useTenantCollection';
 import { useRoles, memberCountsByRole, deleteRole, bulkReassignRole, resyncRolePerms } from '../data';
 import type { TenantRole } from '../types';
 

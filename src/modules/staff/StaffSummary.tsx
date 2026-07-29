@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react';
 import { Users, ShieldAlert, UserPlus } from 'lucide-react';
-import { useTenant } from '@/contexts/BusinessContext';
-import { Skeleton } from '@/components/ui/skeleton';
-import { KpiTile } from '@/components/dashboard/KpiTile';
+import { useTenant } from '@/shared/contexts/BusinessContext';
+import { Skeleton } from '@/shared/ui/skeleton';
+import { KpiTile } from '@/features/dashboard/components/KpiTile';
 import { useStaff } from './data';
 import { activeHeadcount, expiringCertCount } from './certs';
 

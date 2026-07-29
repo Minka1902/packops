@@ -4,7 +4,7 @@
 // hierarchy. `capabilities` is a legacy mirror kept dual-written until the P7
 // cleanup. See [[permissions]] and [[legacy]].
 
-import type { Capability } from '@/types';
+import type { Capability } from '@/shared/types';
 import type { Grants } from '../permissions';
 
 export interface TenantRole {

@@ -1,13 +1,13 @@
 // ─── Module React helpers ─────────────────────────────────────────────────────
 // Permission-aware building blocks for module UI. These read the active
-// business via useTenant() (from BusinessContext) — NOT @/hooks/useBusiness, so
+// business via useTenant() (from BusinessContext) — NOT @/features/business/hooks/useBusiness, so
 // the modules ESLint boundary is respected.
 
 import type { ReactNode } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { Lock } from 'lucide-react';
-import { useTenant } from '@/contexts/BusinessContext';
-import { buttonVariants } from '@/components/ui/button';
+import { useTenant } from '@/shared/contexts/BusinessContext';
+import { buttonVariants } from '@/shared/ui/button';
 import { isModuleUnlocked } from './permissions';
 import { getManifest } from './registry';
 import type { ModuleId, PermissionLevel } from './ids';

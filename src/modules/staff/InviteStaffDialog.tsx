@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { Loader2, UserPlus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useTenant } from '@/contexts/BusinessContext';
+} from '@/shared/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
+import { useTenant } from '@/shared/contexts/BusinessContext';
 import { inviteStaff } from './data';
 import type { TenantRole } from '../roles/types';
 

@@ -5,7 +5,7 @@
 // 2-read budget as today's hasCap. `capabilities` stays as a legacy mirror until
 // the P7 cleanup. See [[permissions]], [[legacy]], [[roles/types]].
 
-import type { BusinessStaff } from '@/types';
+import type { BusinessStaff } from '@/shared/types';
 import type { Grants } from '../permissions';
 
 export interface StaffCertification {

@@ -5,8 +5,8 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useTenant } from '@/contexts/BusinessContext';
+import { Button } from '@/shared/ui/button';
+import { useTenant } from '@/shared/contexts/BusinessContext';
 import PermissionMatrix from '../roles/PermissionMatrix';
 import { setOverrides } from './data';
 import type { Grants } from '../permissions';

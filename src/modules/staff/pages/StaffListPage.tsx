@@ -3,12 +3,12 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UserPlus, ChevronRight, ShieldAlert } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useTenant } from '@/contexts/BusinessContext';
+import { Button } from '@/shared/ui/button';
+import { Card, CardContent } from '@/shared/ui/card';
+import { Badge } from '@/shared/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar';
+import { Skeleton } from '@/shared/ui/skeleton';
+import { useTenant } from '@/shared/contexts/BusinessContext';
 import { useStaff } from '../data';
 import { useRoles } from '../../roles/data';
 import { activeHeadcount, expiringCertCount } from '../certs';

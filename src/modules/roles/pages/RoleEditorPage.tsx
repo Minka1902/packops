@@ -3,11 +3,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Lock } from 'lucide-react';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useTenant } from '@/contexts/BusinessContext';
+import { Button, buttonVariants } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
+import { Label } from '@/shared/ui/label';
+import { Skeleton } from '@/shared/ui/skeleton';
+import { useTenant } from '@/shared/contexts/BusinessContext';
 import PermissionMatrix from '../PermissionMatrix';
 import { useRoles, createRole, saveRole, RoleConflictError } from '../data';
 import type { Grants } from '../../permissions';

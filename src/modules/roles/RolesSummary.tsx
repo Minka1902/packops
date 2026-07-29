@@ -3,9 +3,9 @@
 // link; this renders the body only. Bounded: roles/staff are small collections.
 
 import { useMemo } from 'react';
-import { useTenant } from '@/contexts/BusinessContext';
-import { useTenantCollection } from '@/lib/tenant/useTenantCollection';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useTenant } from '@/shared/contexts/BusinessContext';
+import { useTenantCollection } from '@/shared/lib/tenant/useTenantCollection';
+import { Skeleton } from '@/shared/ui/skeleton';
 import { useRoles, memberCountsByRole } from './data';
 
 export default function RolesSummary() {
